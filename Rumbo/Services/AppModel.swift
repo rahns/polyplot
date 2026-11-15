@@ -1097,6 +1097,15 @@ final class AppModel {
 
     /// Saves each past day's path colour once (and today's need as it stands), so later goal or schedule
     /// changes never recolour a day that's over.
+    /// Minutes still to log today for the day to count towards the weekly goal (its dot turns green there), or 0.
+    var minutesShortOfTodaysGoal: Int {
+        guard let profile else { return 0 }
+        let days = pathDays()
+        let today = calendar.startOfDay(for: .now)
+        let needed = PathLayout.neededMinutes(on: today, days: days, goal: pathGoal(profile), calendar: calendar)
+        return max(0, needed - (days[today]?.minutes ?? 0))
+    }
+
     func settlePath() {
         guard let profile else { return }
         var history = profile.pathHistory

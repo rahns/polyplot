@@ -261,10 +261,21 @@ struct TodayView: View {
     private func planSection(_ plan: DayPlanRecord) -> some View {
         let tasks = plan.planTasks
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(plan.isComplete ? (model.isWorkingAhead ? "Done early! 🎉" : "Day complete! 🎉") : "Today's plan")
-                    .font(.rounded(.title3, weight: .black))
-                    .foregroundStyle(Palette.ink)
+            // A finished plan that's still short of what the weekly goal needs today says so, and how much is left.
+            let short = plan.isComplete && !model.isWorkingAhead ? model.minutesShortOfTodaysGoal : 0
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan.isComplete
+                         ? (model.isWorkingAhead ? "Done early! 🎉" : short > 0 ? "Today's plan complete" : "Day complete! 🎉")
+                         : "Today's plan")
+                        .font(.rounded(.title3, weight: .black))
+                        .foregroundStyle(Palette.ink)
+                    if short > 0 {
+                        Text("Keep going for \(short) more min to hit today's goal")
+                            .font(.rounded(.subheadline, weight: .semibold))
+                            .foregroundStyle(Palette.secondaryText)
+                    }
+                }
                 Spacer()
                 // The plan's real length (a class plus the daily Duolingo warm-up can run past the time picked);
                 // once the day is complete, the minutes actually logged.
