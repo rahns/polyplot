@@ -386,6 +386,7 @@ final class AppModel {
         save()
         bringProfileUpToDate()
         refreshReminders()
+        Task { await askForNotificationsIfNeeded() }
     }
 
     // MARK: - Planning
@@ -807,6 +808,13 @@ final class AppModel {
     }
 
     /// Reschedules the daily reminder and the evening nudges (skipping today's once it's practised).
+    /// With reminders on but notifications never asked about on this phone (no onboarding here: a restored
+    /// backup, or data already present), asks now, then schedules. Called whenever the app becomes active.
+    func askForNotificationsIfNeeded() async {
+        guard profile?.reminderEnabled == true, await Reminders.requestPermissionIfUndecided() else { return }
+        refreshReminders()
+    }
+
     func refreshReminders() {
         guard let profile else { return }
         let calculator = StreakCalculator(weeklyGoalMinutes: profile.weeklyGoalMinutes, calendar: calendar)

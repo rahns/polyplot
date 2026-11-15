@@ -92,6 +92,13 @@ enum Reminders {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
+    /// Asks only if the learner has never been asked on this phone. Onboarding asks when the reminder is
+    /// switched on, but a learner who skipped onboarding (restored a backup, or data already there) never was.
+    static func requestPermissionIfUndecided() async -> Bool {
+        guard await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .notDetermined else { return false }
+        return await requestPermission()
+    }
+
     private static var allIDs: [String] {
         [legacyDailyID] + (0..<dailyDaysAhead).map { "\(dailyPrefix)\($0)" } + (0..<nudgeDaysAhead).map { "\(nudgePrefix)\($0)" }
     }

@@ -81,7 +81,7 @@ The first screen also offers "Restore from a backup". Without a backup, onboardi
 6. Placement reveal: band badge with the reasoning in one line ("154 hours of listening (≈ 280 training hours) and 7 of 10 can-dos").
 7. Goal: the same goal editor as Settings → Goal (below). It comes after placement so the date can be worked out from the learner's hours; the date starts where the default 150 min a week leads.
 8. Better writing feedback (skippable, "Skip for now"): how to get a free Gemini API key, a field with Paste and Test (§5.3).
-9. Reminder: daily reminder toggle and time (asks for notification permission), and which day the week starts on. The reminder time is the learner's study time; there's no separate "study time" setting.
+9. Reminder: daily reminder toggle and time (asks for notification permission), and which day the week starts on. A learner who never went through onboarding on this phone (restored a backup from the first screen, or the data was already there) is asked the first time the app opens with reminders on, if the phone has never been asked. The reminder time is the learner's study time; there's no separate "study time" setting.
 
 ### Goal (onboarding step and Settings → Goal)
 Implemented in `Polyplot/Features/Goal/GoalEditor.swift`, with `GoalPace` in PolyplotCore (§2.9).

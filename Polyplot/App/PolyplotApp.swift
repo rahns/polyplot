@@ -98,6 +98,7 @@ struct RootView: View {
                 model.save()
                 model.refreshReminders()
                 Task { await model.refreshCatalog() }
+                Task { await model.askForNotificationsIfNeeded() }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
