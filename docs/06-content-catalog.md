@@ -4,9 +4,9 @@
 
 > **Languages.** Each language has its own list, named by its pack (`LanguagePack.catalog`): `content.json` for Spanish, described below, and `content.fr.json` for French (25 items; see [09-multi-language.md](09-multi-language.md) §9.7 for how it was chosen and what still needs checking). Both are refreshed from `main` the same way. Prompts are shared by every language, with the language's name and places filled in.
 
-The catalog is a JSON file bundled with the app (`Rumbo/Resources/catalog/content.json`). Each time the Library opens (or is pulled to refresh), Rumbo fetches `https://raw.githubusercontent.com/rahns/rumbo/main/Rumbo/Resources/catalog/content.json`, caches it, and uses it only if its `version` is higher than the bundled one. So suggestions can be updated by editing the file on `main` and bumping `version`, without a new build. Free, no server.
+The catalog is a JSON file bundled with the app (`Polyplot/Resources/catalog/content.json`). Each time the Library opens (or is pulled to refresh), Polyplot fetches `https://raw.githubusercontent.com/rahns/polyplot/main/Polyplot/Resources/catalog/content.json`, caches it, and uses it only if its `version` is higher than the bundled one. So suggestions can be updated by editing the file on `main` and bumping `version`, without a new build. Free, no server.
 
-Each item: `id`, `title`, `kind` (`series` / `film` / `podcast` / `youtube`), `from` and `to` bands, `country`, `whereToFind`, optional `url`, `why`. A RumboCore test checks that the bundled file decodes, ids are unique and every band has something.
+Each item: `id`, `title`, `kind` (`series` / `film` / `podcast` / `youtube`), `from` and `to` bands, `country`, `whereToFind`, optional `url`, `why`. A PolyplotCore test checks that the bundled file decodes, ids are unique and every band has something.
 
 ## 6.1 Core sources
 
@@ -18,7 +18,7 @@ Each item: `id`, `title`, `kind` (`series` / `film` / `podcast` / `youtube`), `f
 | Language Transfer – Complete Spanish | 90 tracks | Until finished (target: by end of B1.1) | One track per language-focused slot, planned at the track's real length; after each, the learner confirms which track they're up to |
 | Extra en Español | 13 episodes | A2 intensive (2 parts per episode), B1 extensive | Weekly change of pace from Dreaming Spanish (A2: 1 part/week; B1: 1 episode/week), only on days with 20+ min |
 | Duolingo | Sections/units | A2.1–B1.2, optional B2.1 | 5-min warm-up, never longer |
-| Writing | Prompt library (`RumboCore/PromptLibrary+*.swift`): 100 guided-writing prompts per level (A2, B1, B2), 100 quick-write topics, 63 4/3/2 stories, 75 travel missions | All | `write.guided`, `write.quick`; a prompt isn't repeated until its whole list has been used |
+| Writing | Prompt library (`PolyplotCore/PromptLibrary+*.swift`): 100 guided-writing prompts per level (A2, B1, B2), 100 quick-write topics, 63 4/3/2 stories, 75 travel missions | All | `write.guided`, `write.quick`; a prompt isn't repeated until its whole list has been used |
 | Tandem | 62 prompts per level (A2, B1, B2), each with something to send and a question back | All | Text → voice → calls; no repeats until the list is used up |
 
 ### French

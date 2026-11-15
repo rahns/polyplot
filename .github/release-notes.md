@@ -1,9 +1,9 @@
-**Rumbo** turns the Spanish you already study (Dreaming Spanish, Language Transfer, Duolingo, Extra en Español, writing and a Tandem partner) into one daily plan, from A2 to B2.
+**Polyplot** turns the language-learning sources you already use (Dreaming, Language Transfer, Duolingo, Extra, writing and a Tandem/HelloTalk partner) into one daily plan, from your very first words to B2. Spanish and French so far.
 
 ### Install
-1. Download **Rumbo-x.y.z.ipa** below.
+1. Download **Polyplot-x.y.z.ipa** below.
 2. Sign it with your own Apple certificate and install it (for example with Sideloadly, AltStore or your own signing tool). The IPA already carries the app's entitlements.
-3. Open Rumbo and answer the setup questions: where you are in each source, how much time you have, and your goal. It takes about two minutes.
+3. Open Polyplot, pick your language and answer the setup questions: where you are in each source (or that you're completely new), how much time you have, and your goal. It takes about two minutes.
 
 Needs iOS 27. New versions install over the old one and keep your data.
 

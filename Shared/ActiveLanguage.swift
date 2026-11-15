@@ -1,5 +1,5 @@
 import Foundation
-import RumboCore
+import PolyplotCore
 
 /// The language being learned right now, for wording that isn't inside a view with the model at hand
 /// (task titles, reminders, links). The app sets it from the active profile (`AppModel.setLanguage`);
@@ -14,7 +14,7 @@ enum ActiveLanguage {
     private(set) static var band: Band = .a2_1
 
     static var code: String { pack.code }
-    /// The words to show: the language's from A2, English for a beginner (Pico's cheers stay the language's).
+    /// The words to show: the language's from A2, English for a beginner (Poly's cheers stay the language's).
     static var phrases: Phrasebook { pack.phrases(for: band) }
     static var dateLocale: Locale { pack.dateLocale(for: band) }
 

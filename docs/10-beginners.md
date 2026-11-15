@@ -1,6 +1,6 @@
 # 10. Complete beginners (A1)
 
-Rumbo started at A2.1 (about 150 hours of listening). It now goes down to a learner's very first word, with two levels below A2.1. Everything else (the four strands, the 7-day balance, streaks, goals, the path) works as before.
+Polyplot started at A2.1 (about 150 hours of listening). It now goes down to a learner's very first word, with two levels below A2.1. Everything else (the four strands, the 7-day balance, streaks, goals, the path) works as before.
 
 ## 10.1 Levels
 
@@ -32,7 +32,7 @@ Can-do statements for A1.1 and A1.2 (10 each) follow the CEFR's "Basic user" des
 
 ## 10.3 English at A1.1
 
-At A1.1 the app's interface words, otherwise shown in the language being learned, are in English (`Band.usesEnglishInterface`, `LanguagePack.phrases(for:)`). From A1.2 (usually a few months in, rather than the couple of years until A2.1) they're back in the language. That's "Week 3" and "Week complete!" on the path, "Today", "Done!", "Yes!" / "Not yet" in the can-do and level-up checks, "Congratulations!", "Let's go!", "Goal reached!", "7 days in a row!", day and month names on the path, the widgets and the language-switch splash. These stay in the language: **Pico's cheers** ("¡Vamos!", "Allez !"), **the greetings** ("¡Buenos días, Ana!"), **the level names** and **the daily reminder's title**.  The welcome screen ("¡Hola!", "¿Rumbo a dónde?") is Rumbo's brand and stays as it is.
+At A1.1 the app's interface words, otherwise shown in the language being learned, are in English (`Band.usesEnglishInterface`, `LanguagePack.phrases(for:)`). From A1.2 (usually a few months in, rather than the couple of years until A2.1) they're back in the language. That's "Week 3" and "Week complete!" on the path, "Today", "Done!", "Yes!" / "Not yet" in the can-do and level-up checks, "Congratulations!", "Let's go!", "Goal reached!", "7 days in a row!", day and month names on the path, the widgets and the language-switch splash. These stay in the language: **Poly's cheers** ("¡Vamos!", "Allez !"), **the greetings** ("¡Buenos días, Ana!"), **the level names** and **the daily reminder's title**.
 
 The app follows the level through `ActiveLanguage.band`, set by `AppModel` on every save and language switch; widgets get it in their snapshot (`WidgetSnapshot.band`).
 

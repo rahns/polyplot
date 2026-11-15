@@ -1,14 +1,14 @@
 # 1. Research foundations
 
-Rumbo teaches several languages (Spanish and French so far) with the same method. Every scheduling rule in Rumbo traces back to one of the findings below. Where a rule is a design judgement rather than a research finding, the spec says so (marked **[design]**).
+Polyplot teaches several languages (Spanish and French so far) with the same method. Every scheduling rule in Polyplot traces back to one of the findings below. Where a rule is a design judgement rather than a research finding, the spec says so (marked **[design]**).
 
 ## Evidence → rule
 
-| # | Finding | Key sources | Rule in Rumbo |
+| # | Finding | Key sources | Rule in Polyplot |
 |---|---|---|---|
 | R1 | A balanced course gives time to four strands: meaning-focused input, meaning-focused output, language-focused learning, and fluency development. | Nation (2007) | Every task belongs to a strand. The planner balances strands over a rolling 7 days, with targets that change by level. |
 | R2 | Acquisition is driven by input you can understand. | Krashen (1982) | Input is the largest strand at every level (55%). |
-| R3 | Comprehension needs high word coverage: ~95–98% for reading, perhaps ~90–95% for listening. | Hu & Nation (2000); Laufer & Ravenhorst-Kalovski (2010); van Zeeland & Schmitt (2013) | After each Dreaming Spanish session you rate comprehension. Rumbo nudges your Dreaming Spanish difficulty up or down to keep you in the "mostly understand" zone. |
+| R3 | Comprehension needs high word coverage: ~95–98% for reading, perhaps ~90–95% for listening. | Hu & Nation (2000); Laufer & Ravenhorst-Kalovski (2010); van Zeeland & Schmitt (2013) | After each Dreaming Spanish session you rate comprehension. Polyplot nudges your Dreaming Spanish difficulty up or down to keep you in the "mostly understand" zone. |
 | R4 | Producing language makes learners notice gaps; conscious noticing helps intake. | Swain (1985, 1995); Schmidt (1990) | Output starts at A2. Output tasks reuse language from that day's input ("use 3 sentences with X"). |
 | R5 | Negotiating meaning with a real interlocutor supports acquisition. | Long (1996) | Tandem exchanges are a core output task, not an optional extra. |
 | R6 | Speaking anxiety peaks in real-time interaction; planning time improves fluency and complexity. | Horwitz, Horwitz & Cope (1986); Yuan & Ellis (2003) | Speaking unlocks in stages: text → **planned** voice notes → live calls. |
@@ -22,9 +22,9 @@ Rumbo teaches several languages (Spanish and French so far) with the same method
 | R14 | Spanish and French are both Category I languages for English speakers, but French takes longer: about 24 weeks (600 class hours) for Spanish against 30 weeks (750) for French to professional working proficiency. | US Foreign Service Institute | Used for the long-term projection, alongside Dreaming Spanish's published hours roadmap (company guidance, not peer-reviewed). It's also why French levels start at higher hours than Spanish ones ([09-multi-language.md](09-multi-language.md) §9.7). |
 | R15 | Beginner Duolingo courses produce reading/listening outcomes comparable to several university semesters, but give little speaking practice. | Jiang et al. (2021) | Duolingo's share shrinks as the output strands grow, and drops out by B2. |
 
-## Where Rumbo deliberately deviates
+## Where Polyplot deliberately deviates
 
-- **Input is weighted above Nation's 25%.** Nation's strands assume a classroom where much "output" time also contains input. Self-learners get far less incidental input, and learners at A2–B2 need thousands of word families (R3), so Rumbo gives input 55% (raised from 45%: the learner's priority is understanding, and listening is the best-supported use of a self-learner's time; speaking and writing keep 13–25% so output doesn't stall). Fluency time also partly counts as easy input. **[design]**
+- **Input is weighted above Nation's 25%.** Nation's strands assume a classroom where much "output" time also contains input. Self-learners get far less incidental input, and learners at A2–B2 need thousands of word families (R3), so Polyplot gives input 55% (raised from 45%: the learner's priority is understanding, and listening is the best-supported use of a self-learner's time; speaking and writing keep 13–25% so output doesn't stall). Fluency time also partly counts as easy input. **[design]**
 - **Level hours count all training, not just listening.** The listening-hour milestones are divided by the 55% listening share, so a learner following the plan reaches them on schedule while every minute of practice visibly counts. Checked against Cambridge guided-learning hours (×≈2 for self-study) and FSI's Spanish estimate; see §2.1 of the learning engine. **[design]**
 - **Speaking earlier than Dreaming Spanish recommends.** Dreaming Spanish suggests delaying speaking until ~1,000 hours. R4–R6 support output much earlier, with anxiety handled by staging (R6) rather than by waiting.
 - **Session order** (retrieval warm-up → new structure → input → output) is a design choice informed by R4/R7, not a tested sequence. **[design]**

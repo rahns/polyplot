@@ -1,0 +1,203 @@
+import Foundation
+import FoundationModels
+import PolyplotCore
+
+/// Writing correction (docs/05-architecture.md §5.3). With the learner's free Gemini key, Gemini checks the
+/// writing; with a free Groq key too, the two are tried in the learner's chosen order. Without either, or when neither can
+/// answer (free limit used up, bad key, offline), the basic checker
+/// runs instead: LanguageTool finds errors when online and the on-device Apple model explains them; the result
+/// then carries a `notice` saying why. Apple's cloud model isn't used: it crashes sideloaded builds.
+enum CorrectionService {
+    struct Result: Codable, Equatable {
+        var corrections: [Correction]
+        var naturalRewrite: String
+        var strengths: [String]
+        /// Which checker ran, e.g. "Gemini" or "LanguageTool + on-device model".
+        var engine: String
+        /// Shown above the feedback when Gemini was set up but the basic checker had to stand in.
+        var notice: String? = nil
+    }
+
+    enum Failure: LocalizedError {
+        case nothingAvailable(notice: String?)
+
+        var errorDescription: String? {
+            let base = "Can't check right now: you're offline and the on-device model isn't available. Your writing is still saved."
+            if case .nothingAvailable(let notice?) = self { return "\(notice) \(base)" }
+            return base
+        }
+    }
+
+    static var modelAvailable: Bool {
+        if case .available = SystemLanguageModel.default.availability { return true }
+        return false
+    }
+
+    /// The default checker first (Settings → Writing feedback), then the other one if it has a key, then the
+    /// basic checker with a warning saying why.
+    static func correct(_ text: String, band: Band, prompt: String) async throws -> Result {
+        var failures: [(WritingChecker, Error)] = []
+        for checker in WritingCheckers.order {
+            do {
+                // A second checker standing in isn't a downgrade, so no warning; "Checked by" shows which one.
+                switch checker {
+                case .gemini: return try await GeminiClient.correct(text, band: band, prompt: prompt, key: GeminiKey.current ?? "")
+                case .groq: return try await GroqClient.correct(text, band: band, prompt: prompt, key: GroqKey.current ?? "")
+                }
+            } catch {
+                failures.append((checker, error))
+                GeminiTrace.log("\(checker.name) couldn't answer: \(error.localizedDescription)")
+            }
+        }
+        let notice = failures.isEmpty ? nil : WritingCheckers.notice(for: failures)
+        var result = try await basicCheck(text, band: band, prompt: prompt, notice: notice)
+        result.notice = notice
+        return result
+    }
+
+    /// The older checker: LanguageTool plus the on-device model, merged.
+    private static func basicCheck(_ text: String, band: Band, prompt: String, notice: String?) async throws -> Result {
+        // LanguageTool only where it covers the language being learned.
+        var matches: [LanguageTool.Match]?
+        if let code = ActiveLanguage.pack.tutor.languageToolCode {
+            matches = try? await LanguageTool.check(text, language: code)
+        }
+        let toolCorrections = (matches ?? []).compactMap { $0.correction(in: text) }
+
+        guard modelAvailable else {
+            guard let matches else { throw Failure.nothingAvailable(notice: notice) }
+            return Result(corrections: Mistakes.merge(model: [], languageTool: toolCorrections), naturalRewrite: "", strengths: [],
+                          engine: matches.isEmpty ? "LanguageTool (found nothing)" : "LanguageTool")
+        }
+
+        let session = LanguageModelSession(instructions: instructions(for: band))
+        var request = "Writing task: \(prompt)\n\nLearner's text:\n\(text)"
+        if let matches, !matches.isEmpty {
+            request += "\n\nA grammar checker flagged:\n" + matches.map { "- «\($0.flaggedText(in: text))»: \($0.message)" }.joined(separator: "\n")
+        }
+        let feedback = try await session.respond(to: request, generating: WritingFeedback.self).content
+        let modelCorrections = feedback.errors.map {
+            Correction(original: $0.original, corrected: $0.corrected, explanation: $0.explanation, source: "model")
+        }
+        return Result(
+            corrections: Mistakes.merge(model: modelCorrections, languageTool: toolCorrections),
+            naturalRewrite: feedback.naturalRewrite,
+            strengths: Array(feedback.strengths.prefix(2)),
+            engine: matches == nil ? "On-device model (offline)" : "LanguageTool + on-device model"
+        )
+    }
+
+    /// What every checker is told: the language's own checklist (`LanguagePack.tutor`), with explanations
+    /// in English at first and in the language itself from the level the pack names.
+    static func instructions(for band: Band) -> String {
+        let pack = ActiveLanguage.pack
+        return pack.tutor.instructions(language: pack.name, band: band, maximumErrors: Mistakes.maximumErrors)
+    }
+}
+
+@Generable
+struct WritingFeedback {
+    @Guide(description: "Each real error in the learner's text, most important first. Skip anything already correct.")
+    var errors: [WritingError]
+    @Guide(description: "The whole text rewritten the way a native speaker would say it, keeping the learner's meaning.")
+    var naturalRewrite: String
+    @Guide(description: "One or two short, specific things the learner did well.")
+    var strengths: [String]
+}
+
+@Generable
+struct WritingError {
+    @Guide(description: "The exact wrong words, copied from the learner's text.")
+    var original: String
+    @Guide(description: "The corrected words. Must be different from original.")
+    var corrected: String
+    @Guide(description: "One short sentence explaining the rule.")
+    var explanation: String
+}
+
+/// The public LanguageTool API: free, no key, about 20 requests a minute.
+enum LanguageTool {
+    struct Match: Decodable {
+        struct Replacement: Decodable { let value: String }
+
+        let message: String
+        let offset: Int
+        let length: Int
+        let replacements: [Replacement]
+
+        /// LanguageTool offsets count UTF-16 code units.
+        func flaggedText(in text: String) -> String {
+            let utf16 = Array(text.utf16)
+            guard offset >= 0, length > 0, offset + length <= utf16.count else { return "" }
+            return String(decoding: utf16[offset..<offset + length], as: UTF16.self)
+        }
+
+        func correction(in text: String) -> Correction? {
+            let flagged = flaggedText(in: text)
+            guard !flagged.isEmpty, let fix = replacements.first?.value else { return nil }
+            return Correction(original: flagged, corrected: fix, explanation: message, source: "languagetool")
+        }
+    }
+
+    private struct Response: Decodable {
+        let matches: [Match]
+    }
+
+    /// `code` is LanguageTool's code for the language being learned (`Tutor.languageToolCode`).
+    static func check(_ text: String, language code: String) async throws -> [Match] {
+        var request = URLRequest(url: URL(string: "https://api.languagetool.org/v2/check")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        var form = URLComponents()
+        form.queryItems = [
+            URLQueryItem(name: "language", value: code),
+            URLQueryItem(name: "text", value: text),
+        ]
+        request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(Response.self, from: data).matches
+    }
+}
+
+/// Which checkers are set up and in what order (Settings → Writing feedback → Default checker).
+enum WritingCheckers {
+    static var defaultChecker: WritingChecker {
+        get { UserDefaults.standard.string(forKey: "checker.default").flatMap(WritingChecker.init(rawValue:)) ?? .standardDefault }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "checker.default") }
+    }
+
+    static var available: Set<WritingChecker> {
+        var set: Set<WritingChecker> = []
+        if GeminiKey.current != nil { set.insert(.gemini) }
+        if GroqKey.current != nil { set.insert(.groq) }
+        return set
+    }
+
+    static var order: [WritingChecker] { WritingChecker.order(default: defaultChecker, available: available) }
+
+    /// "Gemini, then Groq", for the Settings row and Diagnostics.
+    static var summary: String { WritingChecker.summary(default: defaultChecker, available: available) }
+
+    /// The warning above the basic checker's feedback, when every checker that was set up failed.
+    static func notice(for failures: [(WritingChecker, Error)]) -> String {
+        guard failures.count > 1 else {
+            let (checker, error) = failures[0]
+            return checker == .gemini ? GeminiClient.notice(for: error) : GroqClient.notice(for: error, geminiAlsoFailed: false)
+        }
+        let names = failures.map(\.0.name).joined(separator: " and ")
+        if let refused = failures.first(where: { if case Gemini.Failure.invalidKey = $0.1 { true } else { false } }) {
+            return "\(refused.0.name) didn't accept your API key, so the basic checker did this one. Check it in Settings → Writing feedback."
+        }
+        if failures.allSatisfy({ if case Gemini.Failure.rateLimited = $0.1 { true } else { false } }) {
+            return "\(names) are both at their free limits for now, so the basic checker did this one. It's less accurate."
+        }
+        if failures.contains(where: { ($0.1 as? URLError)?.code == .notConnectedToInternet }) {
+            return "You're offline, so the basic checker did this one. It's less accurate."
+        }
+        return "\(names) couldn't answer right now (busy or unavailable), so the basic checker did this one. Try checking again in a minute."
+    }
+}

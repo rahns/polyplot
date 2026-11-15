@@ -1,5 +1,5 @@
 import Foundation
-import RumboCore
+import PolyplotCore
 import Security
 
 /// What the widgets show, written by the app whenever something changes and read by the widget
@@ -32,7 +32,7 @@ struct WidgetSnapshot: Codable, Equatable {
     var mood: String
     /// With no plan yet: the budget that keeps the weekly goal on track. `tasks` then previews its plan.
     var suggestedMinutes: Int? = nil
-    /// Minutes logged that day, so Pico can turn sleepy at 8 pm without the app. Optional for older snapshots.
+    /// Minutes logged that day, so Poly can turn sleepy at 8 pm without the app. Optional for older snapshots.
     var minutesToday: Int? = nil
     /// The next few days, worked out by the app ahead of time (suggested plan, week minutes, streak), so the
     /// widget is right after midnight even before the app is opened. Optional for older snapshots.
@@ -48,8 +48,8 @@ struct WidgetSnapshot: Codable, Equatable {
 
     /// Tapping a suggestion picks that time and opens Today; otherwise it just opens Today.
     var tapURL: URL? {
-        if isSuggestion, let suggestedMinutes { return URL(string: "rumbo://plan?minutes=\(suggestedMinutes)") }
-        return URL(string: "rumbo://today")
+        if isSuggestion, let suggestedMinutes { return URL(string: "polyplot://plan?minutes=\(suggestedMinutes)") }
+        return URL(string: "polyplot://today")
     }
 
     static let placeholder = WidgetSnapshot(
@@ -64,7 +64,7 @@ struct WidgetSnapshot: Codable, Equatable {
     )
 
     /// The snapshot as of `date`: the app's precomputed day if it has one, otherwise today with yesterday's
-    /// plan cleared. From 8 pm with nothing logged, Pico is sleepy (as in the app).
+    /// plan cleared. From 8 pm with nothing logged, Poly is sleepy (as in the app).
     func current(at date: Date = .now, calendar: Calendar = .current) -> WidgetSnapshot {
         var result: WidgetSnapshot
         if calendar.isDate(day, inSameDayAs: date) {
@@ -87,7 +87,7 @@ struct WidgetSnapshot: Codable, Equatable {
         return result
     }
 
-    /// When the widget should next change by itself: 8 pm today if Pico may turn sleepy, then each midnight
+    /// When the widget should next change by itself: 8 pm today if Poly may turn sleepy, then each midnight
     /// (and 8 pm) of the precomputed days.
     func changeDates(after now: Date, calendar: Calendar = .current) -> [Date] {
         let today = calendar.startOfDay(for: now)

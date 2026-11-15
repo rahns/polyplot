@@ -4,7 +4,7 @@
 
 ## 4.1 Storage
 
-**SwiftData**, stored on device only. No Rumbo server and no accounts.
+**SwiftData**, stored on device only. No Polyplot server and no accounts.
 
 Models still follow CloudKit's rules, so sync could be switched on later for a build signed with an iCloud entitlement:
 - Every property is optional or has a default value.
@@ -14,7 +14,7 @@ Models still follow CloudKit's rules, so sync could be switched on later for a b
 
 ## 4.2 Models
 
-Defined in `Rumbo/Models/Models.swift`. Enums are stored as raw strings/ints, with typed accessors.
+Defined in `Polyplot/Models/Models.swift`. Enums are stored as raw strings/ints, with typed accessors.
 
 | Model | Holds |
 |---|---|
@@ -34,15 +34,16 @@ The budget can be changed until the first task is started; after that the day's 
 
 ## 4.3 No sync; manual backup
 
-Rumbo keeps everything on the phone. There is no sync and no automatic backup: CloudKit needs an entitlement the author's signing profile doesn't grant, and Rumbo can't keep access to a file in iCloud Drive across launches on that setup (M0).
+Polyplot keeps everything on the phone. There is no sync and no automatic backup: CloudKit needs an entitlement the author's signing profile doesn't grant, and Polyplot can't keep access to a file in iCloud Drive across launches on that setup (M0).
 
-**Manual backup** (Settings → Backup), implemented in `Rumbo/Services/Backup.swift`:
-- **Save backup** writes `Rumbo Backup YYYY-MM-DD.rumbo` wherever the learner chooses, through the system save dialog. It holds the profile, every activity log, every writing entry (with feedback and rewrite) every mistake-deck card with its schedule, the saved path colours (`pathHistory`: each past day's colour and each day's goal need, so a restore never recolours the path), and the writing-checker settings: the Gemini and GroqCloud keys, the default checker and the thinking level (so restoring on a new phone brings writing feedback back; the setup screen says to keep backup files private). Fields added after version 1 (cards, gates, week start, watched item, level watched, Gemini settings) are optional. Today's plan (with any extras and unsaved writing drafts) isn't included; it's rebuilt from the history. A backup with no Gemini settings leaves the phone's key and thinking level as they are. A restored profile is brought up to date like an old one: a 5-point Dreaming Spanish range and a target date that matches the weekly goal.
+**Manual backup** (Settings → Backup), implemented in `Polyplot/Services/Backup.swift`:
+- **Save backup** writes `Polyplot Backup YYYY-MM-DD.polyplot` wherever the learner chooses, through the system save dialog. It holds the profile, every activity log, every writing entry (with feedback and rewrite) every mistake-deck card with its schedule, the saved path colours (`pathHistory`: each past day's colour and each day's goal need, so a restore never recolours the path), and the writing-checker settings: the Gemini and GroqCloud keys, the default checker and the thinking level (so restoring on a new phone brings writing feedback back; the setup screen says to keep backup files private). Fields added after version 1 (cards, gates, week start, watched item, level watched, Gemini settings) are optional. Today's plan (with any extras and unsaved writing drafts) isn't included; it's rebuilt from the history. A backup with no Gemini settings leaves the phone's key and thinking level as they are. A restored profile is brought up to date like an old one: a 5-point Dreaming Spanish range and a target date that matches the weekly goal.
 - **Restore from a backup** picks a file, imports a copy, decodes it fully, asks for confirmation, then replaces everything. Also offered on the first onboarding screen, for a new phone or reinstall.
-- **File format.** A `.rumbo` file (UTType `com.rahns.rumbo.backup`, declared in Info.plist through `project.yml`) is not plain text: the backup (`BackupFile`) as JSON, compressed with LZFSE, wrapped in a `BackupContainer` (RumboCore): the bytes "RUMBO", a format version (1), the payload's length and a CRC-32 checksum, then the payload. It isn't encrypted (there's no secret key), so it's not tamper-proof against someone who reads this spec, but it can't be read or edited in a text editor, and any changed or cut-short file fails the checksum and is refused ("This backup has been changed or damaged…"). Tested in `BackupContainerTests`.
-- **Old backups.** Plain-JSON backups (`.json`, from before the `.rumbo` format) are no longer accepted: the picker only offers `.rumbo` files, and a JSON file is refused as "not a Rumbo backup". While Rumbo was in development only its author had one, so there's no migration.
-- The backup inside has a `version` number (2), and the container has its own format version; a backup from a newer Rumbo is refused with a message rather than half-read.
+- **File format.** A `.polyplot` file (UTType `com.rahns.polyplot.backup`, declared in Info.plist through `project.yml`) is not plain text: the backup (`BackupFile`) as JSON, compressed with LZFSE, wrapped in a `BackupContainer` (PolyplotCore): the bytes "POLYPLOT", a format version (1), the payload's length and a CRC-32 checksum, then the payload. It isn't encrypted (there's no secret key), so it's not tamper-proof against someone who reads this spec, but it can't be read or edited in a text editor, and any changed or cut-short file fails the checksum and is refused ("This backup has been changed or damaged…"). Tested in `BackupContainerTests`.
+- **Backups from before the rename (one-time import).** The app was first called by another name, with a different bundle ID, so the renamed app installs as a new app and starts empty; data moves across through a backup. To allow that, the picker also offers the old backup files (by their old file extension) and `BackupContainer` also reads their old 5-byte marker (`legacyMagic`; same layout otherwise, tested). These two pieces are the only traces of the old name and should be removed once the move is done.
+- **Old backups.** Plain-JSON backups (`.json`, from before the `.polyplot` format) are no longer accepted: the picker only offers `.polyplot` files, and a JSON file is refused as "not a Polyplot backup". While Polyplot was in development only its author had one, so there's no migration.
+- The backup inside has a `version` number (2), and the container has its own format version; a backup from a newer Polyplot is refused with a message rather than half-read.
 
 If the app is lost without a backup, the learner onboards again. That's cheap by design:
 - The numbers that matter live in the sources themselves: Dreaming Spanish hours, the Language Transfer track, the Duolingo unit and Extra episodes. Onboarding asks for exactly these.
-- What's lost is Rumbo's own history: streak, writing entries and the mistake deck.
+- What's lost is Polyplot's own history: streak, writing entries and the mistake deck.

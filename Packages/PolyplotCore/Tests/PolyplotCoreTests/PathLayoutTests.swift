@@ -1,0 +1,190 @@
+import Foundation
+import Testing
+@testable import PolyplotCore
+
+@Suite struct PathLayoutTests {
+    let calendar = TestCalendar.utc
+    let start = TestCalendar.day(2026, 10, 26)
+
+    func day(_ offset: Int) -> Date { calendar.startOfDay(for: TestCalendar.adding(days: offset, to: start)) }
+
+    func map(today offset: Int, _ days: [Int: PathLayout.Day] = [:], arrivals: [Band: Date] = [:]) -> PathMap {
+        PathLayout.map(
+            start: start,
+            today: TestCalendar.adding(days: offset, to: start),
+            days: Dictionary(uniqueKeysWithValues: days.map { (day($0.key), $0.value) }),
+            arrivals: arrivals,
+            calendar: calendar
+        )
+    }
+
+    let finished = PathLayout.Day(minutes: 30, session: .finished)
+
+    @Test func firstDayIsTodayWithUnitsAhead() {
+        let path = map(today: 0)
+        #expect(path.allNodes.first?.status == .current)
+        #expect(path.allNodes.first?.isToday == true)
+        #expect(path.units.count == 1 + PathLayout.minimumUnitsAhead)
+        #expect(path.allNodes.dropFirst().allSatisfy { $0.status == .upcoming })
+    }
+
+    @Test func oneNodePerCalendarDayIncludingMissedOnes() {
+        let path = map(today: 4, [
+            0: finished,
+            1: PathLayout.Day(minutes: 5, session: .unfinished),
+            3: PathLayout.Day(minutes: 20, session: .none),
+        ])
+        #expect(path.allNodes.prefix(6).map(\.status) == [.done, .partial, .missed, .done, .current, .upcoming])
+    }
+
+    @Test func withAGoalADayIsGreenOnlyIfItReachedWhatTheGoalNeeded() {
+        func path(goal: Int, today: Int, _ days: [Int: PathLayout.Day]) -> [PathNode.Status] {
+            PathLayout.map(start: start, today: TestCalendar.adding(days: today, to: start),
+                           days: Dictionary(uniqueKeysWithValues: days.map { (day($0.key), $0.value) }), arrivals: [:],
+                           goal: PathLayout.Goal(weeklyMinutes: goal), calendar: calendar)
+                .allNodes.prefix(today + 1).map(\.status)
+        }
+        // 140 a week from a Monday: 20 a day, then what's left spread over the days left.
+        #expect(path(goal: 140, today: 4, [
+            0: PathLayout.Day(minutes: 20, session: .finished),   // needed 20: green
+            1: PathLayout.Day(minutes: 15, session: .finished),   // needed 20: yellow, even with the plan finished
+            2: PathLayout.Day(minutes: 30, session: .none),       // needed 21: green without a plan
+            3: PathLayout.Day(minutes: 25, session: .unfinished), // needed 19: green with the plan unfinished
+            4: PathLayout.Day(minutes: 10, session: .finished),   // today, finished, needed 17: yellow
+        ]) == [.done, .partial, .done, .done, .partial])
+        #expect(path(goal: 140, today: 1, [1: PathLayout.Day(minutes: 5, session: .unfinished)]) == [.missed, .current],
+                "today stays current until it's finished")
+        // Once the week's goal is met, any practice is enough.
+        #expect(path(goal: 30, today: 2, [
+            0: PathLayout.Day(minutes: 30, session: .finished),
+            1: PathLayout.Day(minutes: 5, session: .none),
+        ]) == [.done, .done, .current])
+    }
+
+    @Test func aPastDaysColourIsSavedOnceAndNeverChanges() {
+        let days = [day(0): PathLayout.Day(minutes: 20, session: .finished), day(1): PathLayout.Day(minutes: 20, session: .finished)]
+        func map(goal: Int, today: Int, history: PathLayout.PathHistory) -> PathMap {
+            PathLayout.map(start: start, today: TestCalendar.adding(days: today, to: start), days: days, arrivals: [:],
+                           goal: PathLayout.Goal(weeklyMinutes: goal), history: history, calendar: calendar)
+        }
+        // Day 1 (Tuesday) with a 140 goal needs 20: green. Its need is recorded during the day.
+        var history = PathLayout.PathHistory()
+        let tuesday = map(goal: 140, today: 1, history: history)
+        let need = PathLayout.neededMinutes(on: day(1), days: days, goal: PathLayout.Goal(weeklyMinutes: 140), calendar: calendar)
+        #expect(need == 20)
+        let savedTuesday = history.update(with: tuesday, todayNeeded: need, today: day(1), calendar: calendar)
+        #expect(savedTuesday)
+        // On Wednesday the goal goes up to 280: unsaved, Tuesday would be yellow, but its recorded need keeps it green.
+        let wednesday = map(goal: 280, today: 2, history: history)
+        #expect(wednesday.allNodes[1].status == .done)
+        let savedWednesday = history.update(with: wednesday, todayNeeded: nil, today: day(2), calendar: calendar)
+        #expect(savedWednesday)
+        #expect(history.statuses[PathLayout.PathHistory.key(day(1), calendar: calendar)] == .done)
+        // Monday was settled on Tuesday, green; a lower goal later can't turn a yellow day green either.
+        #expect(wednesday.allNodes[0].status == .done)
+        var strict = PathLayout.PathHistory()
+        _ = strict.update(with: map(goal: 280, today: 2, history: strict), todayNeeded: nil, today: day(2), calendar: calendar)
+        #expect(map(goal: 70, today: 5, history: strict).allNodes.prefix(2).map(\.status) == [.partial, .partial],
+                "saved colours ignore later changes")
+        let again = map(goal: 70, today: 2, history: history)
+        let savedAgain = history.update(with: again, todayNeeded: nil, today: day(2), calendar: calendar)
+        #expect(!savedAgain, "nothing new to save")
+    }
+
+    @Test func weeksStartOnTheLearnersWeekStart() {
+        // Started on a Thursday: the first week runs from that Monday, with Mon–Wed before the start.
+        let thursday = TestCalendar.adding(days: 3, to: start)
+        let path = PathLayout.map(start: thursday, today: TestCalendar.adding(days: 5, to: start), days: [:], arrivals: [:], calendar: calendar)
+        #expect(path.allNodes.first?.date == day(0))
+        #expect(path.units[0].nodes.prefix(4).map(\.status) == [.beforeStart, .beforeStart, .beforeStart, .missed])
+        #expect(path.todayNode?.date == day(5))
+        // With Sunday as the week start, the first week begins the Sunday before.
+        var sundayFirst = calendar
+        sundayFirst.firstWeekday = 1
+        let sundayPath = PathLayout.map(start: thursday, today: thursday, days: [:], arrivals: [:], calendar: sundayFirst)
+        #expect(sundayPath.allNodes.first?.date == day(-1))
+    }
+
+    @Test func aWeekCanBeCompleteWithDaysBeforeTheStart() {
+        let thursday = TestCalendar.adding(days: 3, to: start)
+        let finished = PathLayout.Day(minutes: 30, session: .finished)
+        let days = Dictionary(uniqueKeysWithValues: (3...6).map { (day($0), finished) })
+        let path = PathLayout.map(start: thursday, today: TestCalendar.adding(days: 7, to: start), days: days, arrivals: [:], calendar: calendar)
+        #expect(path.units[0].isComplete)
+    }
+
+    @Test func aFrozenDayShowsAsFrozenNotMissed() {
+        let path = PathLayout.map(start: start, today: TestCalendar.adding(days: 3, to: start),
+                                  days: [day(0): finished, day(2): finished], arrivals: [:],
+                                  frozen: [day(1)], calendar: calendar)
+        #expect(path.allNodes.prefix(4).map(\.status) == [.done, .frozen, .done, .current])
+    }
+
+    @Test func freezeMarkersSitAfterTheirWeekEnd() {
+        let path = PathLayout.map(start: start, today: TestCalendar.adding(days: 9, to: start), days: [:], arrivals: [:],
+                                  freezesEarned: [(day: day(6), streak: 14)], nextFreeze: (day: day(20), daysLeft: 11), calendar: calendar)
+        #expect(path.freezeMarkers.map(\.afterNode) == [7, 21])
+        #expect(path.freezeMarkers.map(\.kind) == [.earned(streak: 14), .next(daysLeft: 11)])
+        let beforeStart = PathLayout.map(start: start, today: start, days: [:], arrivals: [:], freezesEarned: [(day: day(-3), streak: 14)], calendar: calendar)
+        #expect(beforeStart.freezeMarkers.isEmpty, "weeks before the path started aren't drawn")
+    }
+
+    @Test func finishingTodayMakesItDoneAndTomorrowStaysLocked() {
+        let path = map(today: 2, [2: finished])
+        #expect(path.todayNode?.status == .done)
+        #expect(path.allNodes[3].status == .upcoming)
+        #expect(path.focusNode == nil)
+    }
+
+    @Test func aDayFinishedEarlyInAnOlderVersionStillShowsDone() {
+        let path = map(today: 2, [2: finished, 3: finished])
+        #expect(path.allNodes[2...4].map(\.status) == [.done, .done, .upcoming])
+    }
+
+    @Test func milestonesSitOnTheirExpectedDayAndExtendThePath() {
+        let path = map(today: 0, arrivals: [.a2_2: day(30), .b1_1: day(120)])
+        #expect(path.milestones.map(\.afterNode) == [31, 121])
+        #expect(path.allNodes.count >= 121 + PathLayout.nodesPerUnit)
+    }
+
+    @Test func farAwayMilestonesAreCappedAtTwoYearsButStillReported() {
+        let path = map(today: 0, arrivals: [.a2_2: day(60), .b2_2: day(3650)])
+        #expect(path.milestones.map(\.band) == [.a2_2])
+        #expect(path.laterMilestones.map(\.band) == [.b2_2])
+        #expect(path.units.count == 1 + PathLayout.maximumUnitsAhead)
+    }
+
+    @Test func aMilestoneMovesOntoThePathAsItGetsCloser() {
+        let far = map(today: 0, arrivals: [.b1_1: day(900)])
+        #expect(far.milestones.isEmpty && far.laterMilestones.count == 1)
+        let closer = map(today: 300, arrivals: [.b1_1: day(900)])
+        #expect(closer.milestones.map(\.band) == [.b1_1])
+        #expect(closer.laterMilestones.isEmpty)
+    }
+
+    @Test func aCompleteUnitIsSevenDoneDays() {
+        let week = Dictionary(uniqueKeysWithValues: (0..<7).map { ($0, finished) })
+        let path = map(today: 7, week)
+        #expect(path.units[0].isComplete)
+        #expect(!path.units[1].isComplete)
+    }
+
+    @Test func partlyDoneAndFrozenDaysStillMakeAWeekGold() {
+        var days = Dictionary(uniqueKeysWithValues: (0..<7).map { (day($0), finished) })
+        days[day(2)] = PathLayout.Day(minutes: 3, session: .unfinished)
+        days[day(4)] = nil
+        let path = PathLayout.map(start: start, today: TestCalendar.adding(days: 8, to: start), days: days, arrivals: [:],
+                                  frozen: [day(4)], calendar: calendar)
+        #expect(path.units[0].isComplete)
+        #expect(path.units[0].isPast)
+    }
+
+    @Test func aPastWeekWithAMissedDayIsOverButNotGold() {
+        var week = Dictionary(uniqueKeysWithValues: (0..<7).map { ($0, finished) })
+        week[3] = nil
+        let path = map(today: 8, week)
+        #expect(path.units[0].isPast)
+        #expect(!path.units[0].isComplete)
+        #expect(!path.units[1].isPast, "this week isn't over yet")
+    }
+}

@@ -12,3 +12,6 @@ DerivedData/
 
 .DS_Store
 xcuserdata/
+
+# Python
+__pycache__/

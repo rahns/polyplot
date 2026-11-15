@@ -2,13 +2,13 @@
 
 > **Languages.** This chapter states the rules with Spanish's sources and numbers, because Spanish is the language they were tuned on. In code, everything that depends on the language (the hours each level starts at, which product fills each source role and its sizes, the weekly anchors, the can-do wording) comes from the active `LanguagePack`; the method (strands, planning steps, streaks, goals) is the same for every language. See [09-multi-language.md](09-multi-language.md).
 
-The engine is pure Swift with no UI or Apple-framework dependencies (`RumboCore`), so every rule here is unit-testable. References like (R3) point to [01-research.md](01-research.md).
+The engine is pure Swift with no UI or Apple-framework dependencies (`PolyplotCore`), so every rule here is unit-testable. References like (R3) point to [01-research.md](01-research.md).
 
 ## 2.1 Levels (bands)
 
-Rumbo uses eight internal bands, from a complete beginner (A1.1, zero hours) to B2.2. Each band has a **training-hours threshold** and a **can-do check** (10 self-assessment statements adapted from the CEFR self-assessment grid).
+Polyplot uses eight internal bands, from a complete beginner (A1.1, zero hours) to B2.2. Each band has a **training-hours threshold** and a **can-do check** (10 self-assessment statements adapted from the CEFR self-assessment grid).
 
-**Training hours** count every minute of practice logged in Rumbo, whatever the strand. The thresholds start from Dreaming Spanish's listening-hour milestones (0 / 50 / 150 / 225 / 300 / 450 / 600 / 800 / 1000) and divide them by the plan's listening share, **55%**, rounded to 10: a learner following the mix reaches each listening milestone at the same time as the training-hour threshold. Listening done before Rumbo (the Dreaming Spanish counter at onboarding) is converted the same way, ÷ 0.55, so 150 h becomes about 273 training hours. **[design]**
+**Training hours** count every minute of practice logged in Polyplot, whatever the strand. The thresholds start from Dreaming Spanish's listening-hour milestones (0 / 50 / 150 / 225 / 300 / 450 / 600 / 800 / 1000) and divide them by the plan's listening share, **55%**, rounded to 10: a learner following the mix reaches each listening milestone at the same time as the training-hour threshold. Listening done before Polyplot (the Dreaming Spanish counter at onboarding) is converted the same way, ÷ 0.55, so 150 h becomes about 273 training hours. **[design]**
 
 Sanity check against other sources (checked October 2026): Cambridge English puts B1 at about 350–400 and B2 at about 500–600 *guided* (classroom) hours; total study is usually put at about twice that. The FSI's 600–750 class hours for Spanish to professional working proficiency is often quoted as about 1,200–1,500 hours with self-study. B1.1 at 550 and B2.1 at 1,090 sit inside those ranges.
 
@@ -25,7 +25,7 @@ Sanity check against other sources (checked October 2026): Cambridge English put
 
 Speaking-stage unlocks (§2.4) still use **listening** hours, since they're about how much the learner understands.
 
-Reaching the end of B2.2 completes the goal. After that Rumbo switches to a **maintenance plan** (same engine, B2.2 targets, mostly native content).
+Reaching the end of B2.2 completes the goal. After that Polyplot switches to a **maintenance plan** (same engine, B2.2 targets, mostly native content).
 
 Complete beginners start at A1.1 with zero hours: onboarding has an "I'm completely new" choice that skips the hours and can-do questions. See [10-beginners.md](10-beginners.md) for how the plan differs at A1. (French levels start a little later; each language's hours are in its pack.)
 
@@ -59,9 +59,9 @@ Every task belongs to exactly one strand (R1). The planner targets these shares 
 
 A strand at **0%** (speaking & writing at A1.1, fluency at A1, or one set to 0% in a custom balance) gets no cards and isn't offered in Keep going or Log other. On Progress → strand balance its row stays, greyed out, with why: "Starts at A2.1" (`Band.firstBand(including:)`), "Set to 0% in Plan balance", or "Nothing to plan: its sources are off".
 
-**Custom plan balance** (Settings → Plan balance, `StrandBalance`): the learner can replace this split with their own, in whole percentages in steps of 5 that always add up to 100. Moving one strand scales the others to fill the rest, keeping their proportions (evenly if they were all 0). The custom split is used for every deficit (`LearnerSnapshot.strandTargets`) until the learner switches back to Rumbo's. A strand at 0% never gets a new card (step 3 and the 10-minute single task skip it). A strand the planner can't fill today (nothing eligible: say Language Transfer and Duolingo are off and no mistake cards are due, `LearnerSnapshot.canPlan`) has its share spread over the others in proportion, with the default split too; if a custom split puts everything on such strands, the band's split is used for the rest, so the plan is never left empty. Settings → Plan balance flags such a strand under its slider, and Progress → strand balance uses the same effective targets; classes/tutoring, the Duolingo warm-up, the mistake review and the travel mission are planned as usual. Tested in `StrandBalanceTests`.
+**Custom plan balance** (Settings → Plan balance, `StrandBalance`): the learner can replace this split with their own, in whole percentages in steps of 5 that always add up to 100. Moving one strand scales the others to fill the rest, keeping their proportions (evenly if they were all 0). The custom split is used for every deficit (`LearnerSnapshot.strandTargets`) until the learner switches back to Polyplot's. A strand at 0% never gets a new card (step 3 and the 10-minute single task skip it). A strand the planner can't fill today (nothing eligible: say Language Transfer and Duolingo are off and no mistake cards are due, `LearnerSnapshot.canPlan`) has its share spread over the others in proportion, with the default split too; if a custom split puts everything on such strands, the band's split is used for the rest, so the plan is never left empty. Settings → Plan balance flags such a strand under its slider, and Progress → strand balance uses the same effective targets; classes/tutoring, the Duolingo warm-up, the mistake review and the travel mission are planned as usual. Tested in `StrandBalanceTests`.
 
-The trend: output grows and language-focused study shrinks as structured courses finish (R4, R5, R15). Why input stays above Nation's 25% is explained in [01-research.md](01-research.md#where-rumbo-deliberately-deviates).
+The trend: output grows and language-focused study shrinks as structured courses finish (R4, R5, R15). Why input stays above Nation's 25% is explained in [01-research.md](01-research.md#where-polyplot-deliberately-deviates).
 
 ## 2.3 Task catalog
 
@@ -97,7 +97,7 @@ Staged to reduce anxiety and add planning time (R5, R6):
 | 2. Planned voice notes | listening hours ≥ 250 **and** ≥ 8 text exchanges logged over ≥ 3 weeks **and** the learner rates text chats as "comfortable" | adds `tandem.voice`, `fluency.432` |
 | 3. Live calls | listening hours ≥ 400 **and** ≥ 6 voice notes logged | adds `tandem.call` |
 
-The learner can always unlock a stage early, or switch one off: Settings → Speaking has toggles, "I'm ready for voice notes" and "I'm ready for live calls". Switching one off also stops Rumbo unlocking it (and the stages after it) by itself, until it's switched back on (`speakingStageCap` on the profile). Autonomy matters more than the gate.
+The learner can always unlock a stage early, or switch one off: Settings → Speaking has toggles, "I'm ready for voice notes" and "I'm ready for live calls". Switching one off also stops Polyplot unlocking it (and the stages after it) by itself, until it's switched back on (`speakingStageCap` on the profile). Autonomy matters more than the gate.
 
 ## 2.5 Daily planner
 
@@ -107,7 +107,7 @@ Band, today's budget `B` (10 / 15 / 20 / 30 / 45 / 60 min, plus 90 / 120 on a le
 Settings that shape the plan (travel mode, Always include Duolingo, lessons, speaking stage) re-plan today at the same budget as soon as they change, unless a task has already been started (`AppModel.replanTodayIfNotStarted`).
 
 ### Algorithm
-Implemented in `RumboCore/DayPlanner.swift`.
+Implemented in `PolyplotCore/DayPlanner.swift`.
 
 0. **Lesson.** On a lesson day (Settings → Lessons: chosen weekdays, a usual length and type, and each day's own length and type when more than one day is chosen; `LessonSchedule`), the lesson is always planned, at that day's length, as `lesson.output` (speaking & writing), `lesson.input` (listening), `lesson.study` (grammar & vocab) or `lesson.mixed` (**All-in-one**). An all-in-one lesson counts a third of its minutes toward each of speaking & writing, listening and grammar & vocab in the day's mix, and is logged as three logs, split evenly (`LessonType.split`: 60 → 20 + 20 + 20, 50 → 17 + 17 + 16). It's **inside** the budget: it uses up part of `B`, and its minutes count in that strand's deficit, so the rest of the day leans to other strands. It doesn't take one of the 4 cards, never gets leftover minutes, and is never offered in Keep going. If it takes the whole budget, the plan is the lesson (plus Duolingo when that's always included). Lessons don't count toward the weekly Tandem or writing anchors.
 1. **Warm-up.** Every day the band uses Duolingo and Settings → Habit → **Always include Duolingo** is on (the default; "If you're keeping a streak going"), plan `duo.lesson` first: one lesson, 3 min (it keeps the learner's Duolingo streak; never more than 5). With it off, nothing reserves room for Duolingo: it's just one of the study options. If `B ≥ 20` and ≥ 5 cards are due, plan `review.mistakes` (3 min, or 5 from 30 min).
@@ -123,7 +123,7 @@ Implemented in `RumboCore/DayPlanner.swift`.
 7. **Tiny days.** If `B = 10`: the 3-minute Duolingo lesson (when the band uses it), then one task for the other 7 minutes: the strand with the largest deficit, using its first task that fits, preferring one that fills the time. Once calls are unlocked, the week's call comes before writing in the output queue, so it isn't squeezed out by shorter tasks.
 8. **Keep going.** Once every planned card is done or skipped (with at least one done), Today offers every other eligible task not already in the plan, at its standard length and with its progression detail (next track, next Extra part). They're ordered by strand deficit over the last 7 days *including today*, so the most-behind strand comes first. An extra is added to the day as its own card when started; it counts like any other practice (minutes, strand balance, streak, training hours, course progress) but never changes whether the day is complete. (`DayPlanner.extraTasks`)
 
-**Goal advice with lessons** (`BudgetAdvisor`): the minutes still needed this week are shared evenly over the days left (today included), except that a lesson day can't be less than its lesson. Rumbo finds the even level `x` with Σ max(x, lesson that day) = minutes still needed (`BudgetAdvisor.level`): big lessons lower what the other days need, and a lesson shorter than `x` is just part of that day's `x`. If the lessons alone cover what's left, `x` is 0. Today needs `max(x, today's lesson)`, rounded up to a time chip. Example: a 150-minute goal on a Monday with lessons Tuesday (60) and Thursday (45) gives about 9 min on each of the other five days; on Tuesday the advice is the 60-minute lesson.
+**Goal advice with lessons** (`BudgetAdvisor`): the minutes still needed this week are shared evenly over the days left (today included), except that a lesson day can't be less than its lesson. Polyplot finds the even level `x` with Σ max(x, lesson that day) = minutes still needed (`BudgetAdvisor.level`): big lessons lower what the other days need, and a lesson shorter than `x` is just part of that day's `x`. If the lessons alone cover what's left, `x` is 0. Today needs `max(x, today's lesson)`, rounded up to a time chip. Example: a 150-minute goal on a Monday with lessons Tuesday (60) and Thursday (45) gives about 9 min on each of the other five days; on Tuesday the advice is the 60-minute lesson.
 
 ### Weekly anchors
 Planned on the first day the budget allows, so they don't depend on a fixed weekday (which wouldn't survive backpacking).
@@ -178,11 +178,11 @@ Over the last 5 ratings at the current difficulty: 3 or more "Easy" → suggest 
 | Weekly goal | Main metric, set on the goal page in onboarding and Settings (default 150 min/week, 10-minute steps from 30 to 900), linked to the target date (§2.9). Shown as a ring. |
 | Streak | A day counts if anything is logged: a partial day (even one Duolingo lesson) keeps the streak (R12) |
 | Streak freeze | Everyone starts with 1. A 7-day streak earns the first, then every two weeks after that (when it reaches 7, 21, 35, 49… days) earns 1; frozen days keep the streak but don't add to it, and a broken streak starts the count again. Hold at most 3; a reward that comes while full is skipped. Used automatically on a missed day, only when there's a streak to save |
-| Training hours | The running total shown in the header (clock badge) instead of XP: every minute logged, plus listening from before Rumbo ÷ 0.55. It's the same number levels are measured in, so it always means something. |
+| Training hours | The running total shown in the header (clock badge) instead of XP: every minute logged, plus listening from before Polyplot ÷ 0.55. It's the same number levels are measured in, so it always means something. |
 
 ## 2.9 Projection
 
-Weekly training hours = rolling average of everything logged over the last 4 weeks. For a newer learner the average covers only the days since their first log (at least 7), so one short first session isn't read as a month-long pace. Until there's a week of history, the forecast assumes the learner meets their weekly goal (every goal minute counts). Rumbo projects a date for each remaining band threshold and shows it against the learner's target date ("At this pace you'll reach B1.2 by March 2028. +10 min/day → December 2027").
+Weekly training hours = rolling average of everything logged over the last 4 weeks. For a newer learner the average covers only the days since their first log (at least 7), so one short first session isn't read as a month-long pace. Until there's a week of history, the forecast assumes the learner meets their weekly goal (every goal minute counts). Polyplot projects a date for each remaining band threshold and shows it against the learner's target date ("At this pace you'll reach B1.2 by March 2028. +10 min/day → December 2027").
 
 Example (the author, at the time of writing): 154 h. At ~18 min/day of input → ~110 h/year → about 400–450 h by mid-2028 (B1). Logging an extra 30 min/day of outside listening → about 650 h (B2.1).
 

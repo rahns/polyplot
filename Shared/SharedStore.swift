@@ -4,7 +4,7 @@ import Security
 /// Identifiers and the small amount of state shared between the app and its widgets.
 /// Tries the App Group first and falls back to a shared Keychain group.
 enum SharedStore {
-    static let appGroupID = "group.com.rahns.rumbo"
+    static let appGroupID = "group.com.rahns.polyplot"
 
     private static let pingKey = "diagnostics.lastPing"
 

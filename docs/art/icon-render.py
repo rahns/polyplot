@@ -1,9 +1,9 @@
-# App icon: Pico on a warm gradient with a soft sun disc. Uses the reference toucan geometry.
+# App icon: Poly on a warm gradient with a soft sun disc. Uses the reference toucan geometry.
 import importlib.util, pathlib, numpy as np
 from PIL import Image
 
-# Load the reference toucan from pico-render.py next to this script.
-_spec = importlib.util.spec_from_file_location("pico_render", pathlib.Path(__file__).with_name("pico-render.py"))
+# Load the reference toucan from poly-render.py next to this script.
+_spec = importlib.util.spec_from_file_location("poly_render", pathlib.Path(__file__).with_name("poly-render.py"))
 T = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(T)
 

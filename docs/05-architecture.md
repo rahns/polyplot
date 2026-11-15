@@ -12,19 +12,19 @@
 | CI | GitHub Actions, `runs-on: xcode-27` (Apple Silicon, macOS 27, Xcode 27) |
 | Third-party dependencies | None in v1 |
 
-> **Languages.** What is specific to the language being learned lives in a `LanguagePack` in RumboCore (`LanguagePack.swift`, `LanguagePack+Spanish.swift`): source names, descriptions, links and URL schemes (§5.4), the writing checker's instructions and LanguageTool code (§5.3), level hours, and the Spanish words the app decorates itself with. `Shared/ActiveLanguage.swift` gives app and widget code the active pack. See [09-multi-language.md](09-multi-language.md).
+> **Languages.** What is specific to the language being learned lives in a `LanguagePack` in PolyplotCore (`LanguagePack.swift`, `LanguagePack+Spanish.swift`): source names, descriptions, links and URL schemes (§5.4), the writing checker's instructions and LanguageTool code (§5.3), level hours, and the Spanish words the app decorates itself with. `Shared/ActiveLanguage.swift` gives app and widget code the active pack. See [09-multi-language.md](09-multi-language.md).
 
 ## 5.2 Repository layout
 
 ```
-rumbo/
+polyplot/
 ├─ project.yml                   # XcodeGen spec
 ├─ Packages/
-│  └─ RumboCore/                 # Pure Swift: bands, planner, FSRS, projection, catalogs
-│     ├─ Sources/RumboCore/
-│     └─ Tests/RumboCoreTests/   # Planner rules from 02-learning-engine.md as tests
-├─ Rumbo/                        # App target
-│  ├─ App/                       # RumboApp, routing, environment
+│  └─ PolyplotCore/                 # Pure Swift: bands, planner, FSRS, projection, catalogs
+│     ├─ Sources/PolyplotCore/
+│     └─ Tests/PolyplotCoreTests/   # Planner rules from 02-learning-engine.md as tests
+├─ Polyplot/                        # App target
+│  ├─ App/                       # PolyplotApp, routing, environment
 │  ├─ Models/                    # SwiftData @Model types
 │  ├─ Features/
 │  │  ├─ Onboarding/
@@ -37,17 +37,17 @@ rumbo/
 │  │  ├─ Progress/
 │  │  ├─ Library/
 │  │  └─ Settings/
-│  ├─ Pico/                      # Mascot shapes + animations
+│  ├─ Poly/                      # Mascot shapes + animations
 │  ├─ Services/                  # Correction, DeepLinks, Notifications, LiveActivity, Backup, ContentLibrary
 │  ├─ DesignSystem/              # Colors, type, cards, haptics, motion presets
 │  └─ Resources/                 # catalog/content.json (Library suggestions), assets
-├─ RumboWidgets/                 # Widget + Live Activity extension
+├─ PolyplotWidgets/                 # Widget + Live Activity extension
 ├─ Shared/                       # ActivityAttributes, App Intents, App Group store
 ├─ docs/
 └─ .github/workflows/build.yml
 ```
 
-`RumboCore` has no dependency on SwiftUI, SwiftData or Apple-only frameworks, so its tests also run on Linux.
+`PolyplotCore` has no dependency on SwiftUI, SwiftData or Apple-only frameworks, so its tests also run on Linux.
 
 The content catalog degrades gracefully: with no network (or a failed fetch) the Library uses the cached copy, then the bundled one.
 
@@ -57,13 +57,13 @@ The content catalog degrades gracefully: with no network (or a failed fetch) the
 
 - **Key:** pasted in onboarding (the "Better writing feedback" step, skippable) or Settings → Writing feedback, with step-by-step instructions to create one free at Google AI Studio (`https://aistudio.google.com/apikey`, no billing needed), a Paste button and a Test button. Stored in the Keychain and saved in backups. An empty field removes it.
 - **Request:** the Interactions API (`POST https://generativelanguage.googleapis.com/v1beta/interactions`, header `x-goog-api-key`) with `store: false`, a JSON schema (`response_format`) for errors, natural rewrite and strengths, and thinking level `medium` (catches more tense, agreement and naturalness errors; the learner preferred better feedback over speed). The answer is the text of the `model_output` step.
-- **Model:** Gemini Flash-Lite (`gemini-3.5-flash-lite`) only; Gemini Flash (`gemini-3.8-flash`) was offered for a while but was almost always too busy, so it was removed. Thinking level `medium` by default (Settings → Writing feedback → Thinking: Low / Medium / High, kept in UserDefaults and saved in backups; the trace shows the level used). Short A2–B1 corrections are well within its reach, and in Diagnostics it answered in about 3 s (streamed or not) while `gemini-3.8-flash` never started (no event in 10 s streamed, nothing in 50 s in one piece), so Flash-Lite is the default. Answers are **streamed** (`stream: true`, server-sent events, with `thinking_summaries: "auto"` so thought summaries keep arriving while the model thinks), which tells a model that's thinking apart from one that's stuck. `Gemini.StreamLimits`: the first event must arrive within 10 s, then no more than 25 s may pass between events, and 90 s in all. `Gemini.StreamReader` takes text only from the `model_output` step, and an `error` event mid-stream is classified like an HTTP error. If streaming fails in any unexpected way (not busy, limited or stuck), Rumbo asks once more without streaming (50 s timeout). If Google says it's busy (500/502/503/504, e.g. "currently experiencing high demand"), Rumbo waits 2 seconds and asks once more. The key test counts a busy or rate-limited reply as a working key (Google accepted it) and says so. Flash-Lite is on the free tier (Oct 2026). Free limits are per Google project and reset at midnight Pacific.
+- **Model:** Gemini Flash-Lite (`gemini-3.5-flash-lite`) only; Gemini Flash (`gemini-3.8-flash`) was offered for a while but was almost always too busy, so it was removed. Thinking level `medium` by default (Settings → Writing feedback → Thinking: Low / Medium / High, kept in UserDefaults and saved in backups; the trace shows the level used). Short A2–B1 corrections are well within its reach, and in Diagnostics it answered in about 3 s (streamed or not) while `gemini-3.8-flash` never started (no event in 10 s streamed, nothing in 50 s in one piece), so Flash-Lite is the default. Answers are **streamed** (`stream: true`, server-sent events, with `thinking_summaries: "auto"` so thought summaries keep arriving while the model thinks), which tells a model that's thinking apart from one that's stuck. `Gemini.StreamLimits`: the first event must arrive within 10 s, then no more than 25 s may pass between events, and 90 s in all. `Gemini.StreamReader` takes text only from the `model_output` step, and an `error` event mid-stream is classified like an HTTP error. If streaming fails in any unexpected way (not busy, limited or stuck), Polyplot asks once more without streaming (50 s timeout). If Google says it's busy (500/502/503/504, e.g. "currently experiencing high demand"), Polyplot waits 2 seconds and asks once more. The key test counts a busy or rate-limited reply as a working key (Google accepted it) and says so. Flash-Lite is on the free tier (Oct 2026). Free limits are per Google project and reset at midnight Pacific.
 - **Checker order:** Settings → Writing feedback → Default checker: Gemini Flash-Lite (the default) or GroqCloud (`WritingChecker`, saved in backups). The default is tried first if it has a key, then the other one if it has a key, then the basic checker (`WritingChecker.order`, tested). A second checker standing in shows no warning; "Checked by" names it. When every checker that was tried failed, one warning sums it up (a refused key is named; "Gemini and GroqCloud are both at their free limits"; "…couldn't answer right now").
-- **GroqCloud** (optional, free): Free key from `https://console.groq.com/keys` (sign-up, no card), pasted in Settings → Writing feedback → Backup checker, with the same Paste and Test as Gemini; kept in the Keychain (`groq.apiKey`) and saved in backups. Model picked automatically (`GroqCloud.chooseModel`): Rumbo reads `GET https://api.groq.com/openai/v1/models` once a day (and again at once if GroqCloud says the model is gone: a 404, or a 400 naming a decommissioned or missing model, then retries with the new pick) and takes the best chat model on it: `openai/gpt-oss-120b` (production; about 1,000 free requests a day), then other GPT-OSS, Qwen and large Llama models, then any other chat model, skipping speech and safety-guard models. If the list can't be read, the last pick is used. GPT-OSS and Qwen get strict structured output and `reasoning_effort`; any other model gets JSON mode (`json_object`) with the shape described in the system prompt. The pick is shown under feedback ("Checked by GroqCloud (gpt-oss-120b)"), in the key test and in the Diagnostics trace. Requests go through the OpenAI-compatible `POST https://api.groq.com/openai/v1/chat/completions` (`Authorization: Bearer`), with strict structured output (`response_format` `json_schema`, closed schema), `reasoning_effort` from the thinking setting, `include_reasoning: false` and `max_completion_tokens` 8192. Not streamed: GroqCloud's structured outputs don't support streaming, and it answers in seconds (40 s timeout). Busy (498 capacity, 5xx) gets one retry after 2 s; 401/403 key refused; 429 limit. No warning when GroqCloud stands in (it isn't a downgrade); "Checked by GroqCloud (gpt-oss-120b)" shows it. Implemented in RumboCore (`GroqCloud`, tested) and `Rumbo/Services/GroqClient.swift`.
+- **GroqCloud** (optional, free): Free key from `https://console.groq.com/keys` (sign-up, no card), pasted in Settings → Writing feedback → Backup checker, with the same Paste and Test as Gemini; kept in the Keychain (`groq.apiKey`) and saved in backups. Model picked automatically (`GroqCloud.chooseModel`): Polyplot reads `GET https://api.groq.com/openai/v1/models` once a day (and again at once if GroqCloud says the model is gone: a 404, or a 400 naming a decommissioned or missing model, then retries with the new pick) and takes the best chat model on it: `openai/gpt-oss-120b` (production; about 1,000 free requests a day), then other GPT-OSS, Qwen and large Llama models, then any other chat model, skipping speech and safety-guard models. If the list can't be read, the last pick is used. GPT-OSS and Qwen get strict structured output and `reasoning_effort`; any other model gets JSON mode (`json_object`) with the shape described in the system prompt. The pick is shown under feedback ("Checked by GroqCloud (gpt-oss-120b)"), in the key test and in the Diagnostics trace. Requests go through the OpenAI-compatible `POST https://api.groq.com/openai/v1/chat/completions` (`Authorization: Bearer`), with strict structured output (`response_format` `json_schema`, closed schema), `reasoning_effort` from the thinking setting, `include_reasoning: false` and `max_completion_tokens` 8192. Not streamed: GroqCloud's structured outputs don't support streaming, and it answers in seconds (40 s timeout). Busy (498 capacity, 5xx) gets one retry after 2 s; 401/403 key refused; 429 limit. No warning when GroqCloud stands in (it isn't a downgrade); "Checked by GroqCloud (gpt-oss-120b)" shows it. Implemented in PolyplotCore (`GroqCloud`, tested) and `Polyplot/Services/GroqClient.swift`.
 - **Fallback with a warning:** with no keys, the basic checker runs. If neither Gemini nor GroqCloud can answer (out of free requests, still busy after the retry, stuck, key refused, offline, any other error), the basic checker runs and the feedback shows a small warning above it saying why, e.g. "You've used Gemini's free limit for now, so the basic checker did this one. It's less accurate."
 - **Claude is not supported:** a Claude Pro subscription doesn't cover API use (API keys are billed per use), and the author wants no extra cost, so a Claude option was built and then removed.
 - **Privacy:** the setup screen says that on the free tier Google may use what's sent to improve its products.
-- Request building, reply parsing and error classification are in RumboCore (`Gemini`, tested); sending is `Rumbo/Services/GeminiClient.swift`.
+- Request building, reply parsing and error classification are in PolyplotCore (`Gemini`, tested); sending is `Polyplot/Services/GeminiClient.swift`.
 - **Diagnostics → Writing checkers:** "Trace a full check" runs a writing check exactly like a task, in the chosen order, and lists every step with timings (`GeminiTrace`, a task-local log): which checker answered, streaming or one piece, HTTP status, first event, when the answer started, thinking updates, longest silence, why a stream was abandoned, GroqCloud's model pick, retries and fallbacks. "Test each checker" asks every checker with a key directly: Gemini streamed and in one piece, then GroqCloud (up to 3 free requests). The checks list has a row for each key. The trace is included in the copied report.
 
 **Basic checker (fallback):**
@@ -71,7 +71,7 @@ The content catalog degrades gracefully: with no network (or a failed fetch) the
 2. **On-device Apple model** gets the text plus LanguageTool's matches and returns structured feedback (`@Generable`). Corrections where the "fix" equals the original are dropped. Apple's Private Cloud Compute model is not used: it crashes sideloaded builds (M0).
 3. With no Apple model, LanguageTool's results are shown alone. Offline with no Apple model: the writing is saved but not checked.
 
-The prompt asks for **at most 8 errors, most important first**, plus one or two specific strengths, so feedback stays useful and encouraging. Explanations are in English at A2–B1 and in simple Spanish from B2.1. Both checkers use the same instructions. Corrections go through `Mistakes.merge` in RumboCore: no-ops dropped, overlapping finds kept once (the model's wording wins over LanguageTool's), capped at 8. Implemented in `Rumbo/Services/Correction.swift`.
+The prompt asks for **at most 8 errors, most important first**, plus one or two specific strengths, so feedback stays useful and encouraging. Explanations are in English at A2–B1 and in simple Spanish from B2.1. Both checkers use the same instructions. Corrections go through `Mistakes.merge` in PolyplotCore: no-ops dropped, overlapping finds kept once (the model's wording wins over LanguageTool's), capped at 8. Implemented in `Polyplot/Services/Correction.swift`.
 
 ## 5.4 Deep links into sources
 
@@ -83,16 +83,16 @@ The prompt asks for **at most 8 errors, most important first**, plus one or two 
 | Duolingo | `duolingo://` | App Store page |
 | Tandem | App via URL scheme | App Store page |
 
-URL schemes are confirmed during implementation and listed in `LSApplicationQueriesSchemes`. If a scheme doesn't work, Rumbo opens the https link instead.
+URL schemes are confirmed during implementation and listed in `LSApplicationQueriesSchemes`. If a scheme doesn't work, Polyplot opens the https link instead.
 
 ## 5.5 Timer, Live Activity and widgets
 
 - The timer is based on timestamps: `startedAt`, plus `pausedAt` / `pausedSeconds` for pauses, so it survives the app being backgrounded or killed.
 - The Live Activity's state carries an *effective* start (now − elapsed) so `Text(timerInterval:)` counts correctly after pauses, plus the paused flag and frozen elapsed time. Its stale date is the planned end + 30 minutes.
-- Pause/Resume is a `LiveActivityIntent` (`Shared/TimerIntents.swift`). It runs in the app's process; the app registers the handler at launch. Done is a `rumbo://finish` link the app opens to the active task's log screen.
+- Pause/Resume is a `LiveActivityIntent` (`Shared/TimerIntents.swift`). It runs in the app's process; the app registers the handler at launch. Done is a `polyplot://finish` link the app opens to the active task's log screen.
 - Ending timers: on leaving the task screen, on logging or cancelling, on `willTerminate` (waiting up to 2 s, since the process is ending), and on every launch.
 - Widgets read `WidgetSnapshot` (`Shared/WidgetSnapshot.swift`), JSON in the Keychain's default access group with the App Group as a fallback. The app rewrites it after every save, only when it changed, and reloads widget timelines.
-- Pico's drawing and the palette live in `Shared/` so the widget extension can draw them (widgets use a still Pico).
+- Poly's drawing and the palette live in `Shared/` so the widget extension can draw them (widgets use a still Poly).
 
 ## 5.6 CI: unsigned IPA
 
@@ -100,9 +100,9 @@ URL schemes are confirmed during implementation and listed in `LSApplicationQuer
 
 1. `runs-on: xcode-27`
 2. Install XcodeGen (Homebrew), run `xcodegen generate`.
-3. `swift test` in `Packages/RumboCore`.
-4. `xcodebuild archive -scheme Rumbo -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`.
-5. Copy `Rumbo.app` from the archive into `Payload/`, zip it as `Rumbo.ipa`.
+3. `swift test` in `Packages/PolyplotCore`.
+4. `xcodebuild archive -scheme Polyplot -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`.
+5. Copy `Polyplot.app` from the archive into `Payload/`, zip it as `Polyplot.ipa`.
 6. Upload just the IPA as a workflow artifact, not zipped (`actions/upload-artifact@v7` with `archive: false`), with no separate entitlements files. On tags, also attach the IPA to a GitHub Release.
 
 The public repo gets free macOS runner minutes.
@@ -113,11 +113,11 @@ The IPA is unsigned; the user signs it with their own certificate and provisioni
 
 | Entitlement | Used for | If missing |
 |---|---|---|
-| App Groups (`group.com.rahns.rumbo`) | Widgets read today's plan | Shared Keychain group `TEAMID.com.rahns.rumbo.shared` (development profiles usually grant `TEAMID.*`). If that fails too: an "Open Rumbo" placeholder. |
-| None needed | Live Activity, notifications, Gemini, Foundation Models on-device, LanguageTool, Pico, everything else | — |
+| App Groups (`group.com.rahns.polyplot`) | Widgets read today's plan | Shared Keychain group `TEAMID.com.rahns.polyplot.shared` (development profiles usually grant `TEAMID.*`). If that fails too: an "Open Polyplot" placeholder. |
+| None needed | Live Activity, notifications, Gemini, Foundation Models on-device, LanguageTool, Poly, everything else | — |
 
 Every CI build is versioned `0.1.<run number>` with build number `<run number>`, so each IPA installs over the previous one.
 
-Milestone 0 ships a test build with a **Diagnostics** screen (Settings → About → Diagnostics) that reports which entitlements and services actually work after signing. It showed that the author's profile has no iCloud or App Group entitlement, so Rumbo stores data on device only and widgets use the Keychain.
+Milestone 0 ships a test build with a **Diagnostics** screen (Settings → About → Diagnostics) that reports which entitlements and services actually work after signing. It showed that the author's profile has no iCloud or App Group entitlement, so Polyplot stores data on device only and widgets use the Keychain.
 
 Friends get the same IPA from the Releases page and sign it with their own certificate.

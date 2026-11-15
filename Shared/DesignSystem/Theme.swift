@@ -1,4 +1,4 @@
-import RumboCore
+import PolyplotCore
 import SwiftUI
 import UIKit
 

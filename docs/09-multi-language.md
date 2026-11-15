@@ -4,13 +4,13 @@
 
 ## 9.1 Summary
 
-Rumbo's engine is mostly language-neutral already: the four strands, the planner's balancing, streaks, freezes, goals, FSRS, classes/tutoring, the path, and the plan balance don't care what is being learned. Spanish lives in five places:
+Polyplot's engine is mostly language-neutral already: the four strands, the planner's balancing, streaks, freezes, goals, FSRS, classes/tutoring, the path, and the plan balance don't care what is being learned. Spanish lives in five places:
 
 1. **The sources.** Dreaming Spanish, Language Transfer, Extra en Español, Duolingo and Tandem/HelloTalk are named in enums (`SourceKind`, `TaskKind`), and their facts are constants: 90 tracks and their lengths, 13 episodes, a 0–100 difficulty scale, which levels each one is used at.
 2. **The level model.** The training hours each level starts at come from Dreaming Spanish's roadmap for English speakers.
 3. **Words.** About 40 English sentences in the app say "Spanish"; 22 prompts and 3 can-do statements do too; the suggested content list is Spanish shows.
 4. **The writing check.** The tutor instructions name Spanish grammar points (ser/estar, por/para), and the basic checker asks LanguageTool for `es`.
-5. **Flavour.** Spanish words used as decoration: "Semana 3", "Hoy", "¡Hecho!", "¡Buenos días!", level names ("Explorador"), Pico's squawks, Spanish day names on the path.
+5. **Flavour.** Spanish words used as decoration: "Semana 3", "Hoy", "¡Hecho!", "¡Buenos días!", level names ("Explorador"), Poly's squawks, Spanish day names on the path.
 
 The plan is to gather all five into one value per language, a **language pack**, and have the engine and the app read from the active pack instead of from constants. Spanish becomes the first pack, with identical behaviour; French is then mostly content work, not code.
 
@@ -22,7 +22,7 @@ Two things should land **before the first public release**, because they are che
 | --- | --- | --- |
 | 1 | Can someone learn two languages at once in the app? | Data is stored so they can (every record tagged), with **one active language**, switchable in Settings. Each language has its own level, plan, weekly goal, streak and history. Onboarding starts by choosing the language. |
 | 2 | The Spanish decoration ("Semana", "¡Hecho!") for other languages | Translated per language through the pack's phrasebook. |
-| 3 | Name and mascot | **Rumbo** and **Pico** stay for every language, as do the welcome screen's "¡Hola!" and "¿Rumbo a dónde?". The daily reminder's title is in the phrasebook, so a language can keep or translate it. |
+| 3 | Name and mascot | **Polyplot** and **Poly** are the same in every language, and the welcome screen is in English. The daily reminder's title is in the phrasebook, so each language has its own. |
 | 4 | Level range | A2–B2 for every language. |
 | 5 | A language with no good source for a role | Ships anyway: the planner passes on the share of a strand that has nothing to plan (tested with a pack that has only writing, a partner and suggested content). |
 | 6 | Which languages after French | Not decided. Languages that need different text handling (Japanese, Korean, Mandarin, Arabic) are for later. |
@@ -31,7 +31,7 @@ Two things should land **before the first public release**, because they are che
 
 ### Language pack
 
-A type in RumboCore, `LanguagePack` (`LanguagePack.swift`), one static value per language (`LanguagePack.spanish` in `LanguagePack+Spanish.swift`), listed in `LanguagePack.all` and looked up by code (`LanguagePack.pack(for: "es")`; an unknown code gives Spanish). Packs are Swift values, not downloaded files, so they are type-checked and unit-tested like the rest of the engine. The one bulky list that already updates over the air (suggested content) stays a JSON file, one per language.
+A type in PolyplotCore, `LanguagePack` (`LanguagePack.swift`), one static value per language (`LanguagePack.spanish` in `LanguagePack+Spanish.swift`), listed in `LanguagePack.all` and looked up by code (`LanguagePack.pack(for: "es")`; an unknown code gives Spanish). Packs are Swift values, not downloaded files, so they are type-checked and unit-tested like the rest of the engine. The one bulky list that already updates over the air (suggested content) stays a JSON file, one per language.
 
 A pack holds:
 
@@ -79,9 +79,9 @@ The level names shown in the app ("Explorador", "Viajero") are decoration and mo
 
 ### Phrasebook
 
-A struct with one field per decoration string, so a missing translation is a compile error, not a blank on screen. From the scan, about 25 entries: week ("Semana"), week complete (two forms), today, done, three greetings, yes, congratulations, let's go, well done, goal reached, days in a row, the six level names, Pico's squawks, the daily reminder title, the test notification title. Day and month names come from the pack's locale, as `SpanishDate` does today.
+A struct with one field per decoration string, so a missing translation is a compile error, not a blank on screen. From the scan, about 25 entries: week ("Semana"), week complete (two forms), today, done, three greetings, yes, congratulations, let's go, well done, goal reached, days in a row, the six level names, Poly's squawks, the daily reminder title, the test notification title. Day and month names come from the pack's locale, as `SpanishDate` does today.
 
-Widgets and the Live Activity show some of these ("¡Hecho!"). They already link RumboCore, so the widget snapshot only needs to carry the language code.
+Widgets and the Live Activity show some of these ("¡Hecho!"). They already link PolyplotCore, so the widget snapshot only needs to carry the language code.
 
 ### Writing check
 
@@ -96,7 +96,7 @@ SwiftData models keep the CloudKit rules (defaults on every property, no unique 
 - **Source progress.** The profile keeps its columns (`dsDifficultyLow/High`, `languageTransferLastTrack`, `extraEpisodesWatched`, `duolingoSection/Unit`, `keepDuolingoInB2`, `alwaysIncludeDuolingo`). The names are from when Spanish was the only language; they hold the same things for any language's graded video, audio course, learner series and drill app. They weren't renamed, so no stored column changes. `SourceProgress` (saved with each task for undo) has role names in code and the old names as coding keys.
 - **Shared across languages.** Reminder time, week start, AI checker keys and default checker, thinking level are on each profile or in the Keychain as before; with several profiles, reminders follow the active one. One-off moments ("7-day streak") are remembered per language: Spanish keeps its plain keys, other languages prefix theirs with the code.
 - **Start over** removes the active language's records only; another language's profile, if there is one, becomes active.
-- **Backup.** `BackupFile` version 2: `profiles` (every language), `activeLanguage`, and an optional `language` on each profile, log, writing entry and card. `profile` is still written (the active one). A version 1 file has none of these and would restore as Spanish (plain-JSON backups are no longer accepted at all since the `.rumbo` format, [04-data-model.md](04-data-model.md) §4.3, but the inner format still reads them). Restoring replaces everything, in every language. Field names for source progress are unchanged.
+- **Backup.** `BackupFile` version 2: `profiles` (every language), `activeLanguage`, and an optional `language` on each profile, log, writing entry and card. `profile` is still written (the active one). A version 1 file has none of these and would restore as Spanish (plain-JSON backups are no longer accepted at all since the `.polyplot` format, [04-data-model.md](04-data-model.md) §4.3, but the inner format still reads them). Restoring replaces everything, in every language. Field names for source progress are unchanged.
 - **Path history** and the plan balance are on the profile, so they are per language.
 - **Content catalog.** `LanguagePack.catalog` names the bundled file, the remote URL and the cache file. Spanish keeps `content.json` and its URL, so installed builds keep updating; French will add `content.fr.json`.
 
@@ -104,7 +104,7 @@ SwiftData models keep the CloudKit rules (defaults on every property, no unique 
 
 The list the work followed, from a scan of all 15,700 lines. "Source names" means references to the five branded sources or their task kinds: about 740 across some two dozen files.
 
-**RumboCore (engine)**
+**PolyplotCore (engine)**
 
 | File | What is Spanish-specific | Change |
 | --- | --- | --- |
@@ -132,11 +132,11 @@ The list the work followed, from a scan of all 15,700 lines. "Source names" mean
 | `Features/Settings/SettingsView.swift` | Progress steppers per brand; no language row | Rows generated from the pack; a Language row to switch or add |
 | `Features/Today/TaskCopy.swift`, `TaskSessionView.swift`, `TodayView.swift` | Titles, instructions and log forms per brand; "¡Buenos días!" | Titles and instructions from the pack's source; greeting from the phrasebook |
 | `Features/Path/PathView.swift` | "Semana", "Hoy", "¡Hecho!", `SpanishDate` | Phrasebook and the pack's locale |
-| `Features/Gate/GateView.swift`, `Writing/GuidedWritingView.swift`, `DesignSystem/Moments.swift`, `Shared/Pico/PicoView.swift` | Decoration | Phrasebook |
+| `Features/Gate/GateView.swift`, `Writing/GuidedWritingView.swift`, `DesignSystem/Moments.swift`, `Shared/Poly/PolyView.swift` | Decoration | Phrasebook |
 | `Features/Progress/*` | Dreaming Spanish level chart | Label from the pack; hidden without a scale |
 | `Features/Library/LibraryView.swift` | Nothing (reads the catalog) | None |
 | `Features/Diagnostics/*` | Checks a fixed list of URL schemes | List from all packs |
-| `RumboWidgets/*`, `Shared/WidgetSnapshot.swift` | "¡Hecho!" | Language code in the snapshot; phrasebook |
+| `PolyplotWidgets/*`, `Shared/WidgetSnapshot.swift` | "¡Hecho!" | Language code in the snapshot; phrasebook |
 | `project.yml` | `LSApplicationQueriesSchemes` lists Spanish apps | The union of every pack's schemes (it must be fixed at build time) |
 
 **Docs.** `01-research.md` and `02-learning-engine.md` state the Spanish numbers as the rules. They need a split into "the method" and "the Spanish pack", and `06-content-catalog.md` becomes per language.
@@ -170,8 +170,8 @@ The widget gallery's sample and the Live Activity test in Diagnostics show Spani
 | Level hours | 310 / 470 / 630 / 940 / 1250 / 1670 | **A judgement:** Spanish's hours plus 15%. No French roadmap is published; Dreaming's FAQ says the early phase "may be slightly longer if instead of Spanish or Italian you are learning Portuguese, or especially French". Change the six numbers in the pack if better figures appear |
 | Weekly anchors, source levels | Same as Spanish | The sources are used the same way |
 | Tutor | passé composé or imparfait, être or avoir and participle agreement, gender and number, articles and "de" after a negative, y and en, prepositions, subjunctive, elision; LanguageTool `fr`; explanations in French from B2.1 | Written for this pack |
-| Phrasebook | "Semaine", "Aujourd'hui", "C'est fait !", "Bonjour" / "Bonsoir", "Oui !" / "Pas encore", "Objectif atteint !", "7 jours d'affilée !", reminder title "On y va ?", Pico's "Allez !", "Bravo !", … Levels: Explorateur, Voyageur, Flâneur, Bavard, À l'aise, Habitué | Written for this pack, **not yet read by a French speaker**. A no-break space comes before "!" and "?" |
-| Suggested content | `Rumbo/Resources/catalog/content.fr.json`, 25 items, at least 5 per level | Learner-made ones (InnerFrench, Easy French, Alice Ayel, French Mornings, Français Authentique, Duolingo French Podcast, Journal en français facile) were found in several recommendation lists. Native ones (Peppa Pig, Trotro, Le Petit Nicolas, C'est pas sorcier, HugoDécrypte, Lupin, Dix pour cent, Plan Cœur, Au service de la France, Le Bureau des légendes, Transfert, Les Pieds sur terre, films) are from general knowledge: **levels and where to watch need a check**, as streaming catalogues vary by country. Most links are YouTube searches so they can't go stale |
+| Phrasebook | "Semaine", "Aujourd'hui", "C'est fait !", "Bonjour" / "Bonsoir", "Oui !" / "Pas encore", "Objectif atteint !", "7 jours d'affilée !", reminder title "On y va ?", Poly's "Allez !", "Bravo !", … Levels: Explorateur, Voyageur, Flâneur, Bavard, À l'aise, Habitué | Written for this pack, **not yet read by a French speaker**. A no-break space comes before "!" and "?" |
+| Suggested content | `Polyplot/Resources/catalog/content.fr.json`, 25 items, at least 5 per level | Learner-made ones (InnerFrench, Easy French, Alice Ayel, French Mornings, Français Authentique, Duolingo French Podcast, Journal en français facile) were found in several recommendation lists. Native ones (Peppa Pig, Trotro, Le Petit Nicolas, C'est pas sorcier, HugoDécrypte, Lupin, Dix pour cent, Plan Cœur, Au service de la France, Le Bureau des légendes, Transfert, Les Pieds sur terre, films) are from general knowledge: **levels and where to watch need a check**, as streaming catalogues vary by country. Most links are YouTube searches so they can't go stale |
 | Place words | "France", "French", "France, Quebec or Belgium", "France or Quebec" | For shared prompts that named Latin America (`LanguagePack.wording`; Spanish's read exactly as before) |
 
 Adding French needed no change to `project.yml`: its sources open with the same URL schemes as Spanish's.
@@ -186,9 +186,9 @@ Adding French needed no change to `project.yml`: its sources open with the same 
 
 ## 9.9 Adding a language
 
-1. Write `LanguagePack+<Name>.swift` in RumboCore, following `LanguagePack+French.swift`: sources for each role it has (leave out roles with no good source), real course and series numbers, level hours, the tutor's checklist, the phrasebook (a native speaker should read it), place words and a flag.
+1. Write `LanguagePack+<Name>.swift` in PolyplotCore, following `LanguagePack+French.swift`: sources for each role it has (leave out roles with no good source), real course and series numbers, level hours, the tutor's checklist, the phrasebook (a native speaker should read it), place words and a flag.
 2. Add it to `LanguagePack.all`. `LanguagePackTests` then checks it is complete, that every shared prompt fills, and that its plans are well formed.
-3. Add `Rumbo/Resources/catalog/content.<code>.json` (at least 20 items, 3 per level; `ContentCatalogTests` checks it).
+3. Add `Polyplot/Resources/catalog/content.<code>.json` (at least 20 items, 3 per level; `ContentCatalogTests` checks it).
 4. If one of its sources opens with a URL scheme the others don't use, add it to `LSApplicationQueriesSchemes` in `project.yml`.
 5. Add it to the **Languages** line in the README, and to §9.7's table of what each pack rests on.
 

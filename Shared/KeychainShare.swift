@@ -6,13 +6,13 @@ import Security
 /// *default* access group: when a signing tool signs the app and its widget extension with the
 /// same profile, both get the same default group and can read each other's items.
 enum KeychainShare {
-    private static let service = "com.rahns.rumbo.shared"
+    private static let service = "com.rahns.polyplot.shared"
 
     /// The access group the Keychain assigns this process by default, e.g. `TEAMID.app.example`.
     static var defaultGroup: String? {
         let probe: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.rahns.rumbo.probe",
+            kSecAttrService as String: "com.rahns.polyplot.probe",
             kSecAttrAccount as String: "probe",
         ]
         var result: CFTypeRef?
