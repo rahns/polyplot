@@ -4,7 +4,7 @@ import UIKit
 
 /// Home: a winding path with one node per calendar day, in units of 7, running on into the future
 /// with projected level-ups. Extra practice after today is done happens on Today ("Keep going").
-/// See docs/03-experience.md §3.4 "Path".
+/// See docs/03-experience.md §3.4 "Plot".
 struct PathView: View {
     @Environment(AppModel.self) private var model
     @Namespace private var zoom

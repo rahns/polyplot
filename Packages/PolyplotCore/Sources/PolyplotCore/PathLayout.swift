@@ -3,7 +3,7 @@ import Foundation
 /// The scrolling path: one node per calendar day since onboarding, in weeks of 7 that start on the
 /// learner's week start (the calendar's `firstWeekday`), running on into the future with projected
 /// level-ups. Future days stay locked.
-/// See docs/03-experience.md §3.4 "Path".
+/// See docs/03-experience.md §3.4 "Plot".
 public struct PathNode: Equatable, Sendable, Identifiable {
     public enum Status: String, Codable, Equatable, Sendable {
         /// Enough practice: at least what the weekly goal needed that day (with a goal), else a finished

@@ -92,9 +92,9 @@ Implemented in `Polyplot/Features/Goal/GoalEditor.swift`, with `GoalPace` in Pol
 - In Settings it's its own page, opened from the Goal row ("B2 by Jun 2034 · 150 min a week"), and saves as it changes. Profiles from before this have a target date filled in from their weekly goal.
 
 ### Tabs
-**Path** (home), **Progress**, **Mistakes**, **Library**, **Settings**. Today isn't a tab: it opens from today's node, like starting a lesson in Duolingo.
+**Plot** (home: the path), **Progress**, **Mistakes**, **Library**, **Settings**. Today isn't a tab: it opens from today's node, like starting a lesson in Duolingo.
 
-### Path (home tab)
+### Plot (home tab)
 Implemented in `Polyplot/Features/Path/PathView.swift`, laid out by `PathLayout` in PolyplotCore.
 
 - **One node per calendar day** since onboarding, labelled with its weekday in the language being learned and its date (Spanish: "Lun 26", "Mié 28", and "Hoy" for today, the day summary reading "Lunes 26 de octubre"; French: "Lun. 26" and "Aujourd'hui"); 7 nodes per unit, each called a week ("Semana N" or "Semaine N", with its dates; a date outside the current year includes the year, e.g. "29 Dec 2025 – 4 Jan", in the phone's language). Weeks line up with the weekly goal's week: they start on Monday, or Sunday if chosen in Settings, so the first week starts on that day before onboarding; its days before the start date show as faint dashes and can't be opened, and don't count against the week.

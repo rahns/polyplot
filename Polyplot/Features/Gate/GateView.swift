@@ -140,7 +140,7 @@ struct GateView: View {
                 .foregroundStyle(Palette.secondaryText)
                 .multilineTextAlignment(.center)
             Spacer()
-            Button("Back to my path") { dismiss() }
+            Button("Back to my plot") { dismiss() }
                 .buttonStyle(ChunkyButtonStyle())
         }
     }

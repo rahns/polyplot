@@ -118,7 +118,7 @@ struct MainTabView: View {
     var body: some View {
         @Bindable var model = model
         TabView(selection: $tab) {
-            Tab("Path", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill", value: 0) { PathView() }
+            Tab("Plot", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill", value: 0) { PathView() }
             Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: 1) { StatsView() }
             Tab("Mistakes", systemImage: "rectangle.stack.fill", value: 2) {
                 NavigationStack { MistakeDeckView() }
@@ -126,7 +126,7 @@ struct MainTabView: View {
             Tab("Library", systemImage: "books.vertical.fill", value: 3) { LibraryView() }
             Tab("Settings", systemImage: "gearshape.fill", value: 4) { SettingsView() }
         }
-        // A widget tap (polyplot://today or polyplot://plan) brings up the Path tab, which pushes Today.
+        // A widget tap (polyplot://today or polyplot://plan) brings up the Plot tab, which pushes Today.
         .onChange(of: model.todayRequests) { tab = 0 }
         // Big moments play over whichever tab is showing (a task can be finished from the Live Activity).
         .overlay {
