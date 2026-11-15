@@ -29,6 +29,12 @@ struct BackupFile: Codable {
     var activeLanguage: String?
     /// The Gemini key and thinking level (Keychain and UserDefaults on the phone). Optional: older backups have none.
     var gemini: GeminiData?
+    /// Today's plan in each language (and a plan made ahead for a later day), so restoring on the same day
+    /// keeps which cards are done. Added later: older backups have none, and today's plan is rebuilt.
+    var plans: [PlanData]?
+    /// One-off moments already shown (a freeze that saved the streak, a unit completed…), so a restore or
+    /// a new phone doesn't show them again. Added later.
+    var momentsSeen: [String]?
 
     struct GeminiData: Codable {
         var apiKey: String?
@@ -88,6 +94,8 @@ struct BackupFile: Codable {
         var levelWatched: Int?
         /// Version 2. Missing means Spanish.
         var language: String?
+        /// Added later, so a restored plan's done cards can still be undone. Missing gives a new ID.
+        var id: UUID?
     }
 
     struct WritingData: Codable {
@@ -119,6 +127,41 @@ struct BackupFile: Codable {
         var lastReview: Date?
         /// Version 2. Missing means Spanish.
         var language: String?
+        /// Added later, so undoing a restored mistake review finds its cards. Missing gives a new ID.
+        var id: UUID?
+    }
+
+    struct PlanData: Codable {
+        var language: String
+        var day: Date
+        var budgetMinutes: Int
+        var band: String
+        var tasks: [TaskData]
+    }
+
+    /// Every field of a planned task, so a restored card behaves exactly as before (timer, draft, undo).
+    struct TaskData: Codable {
+        var task: String
+        var order: Int
+        var minutesPlanned: Int
+        var isAnchor: Bool
+        var isExtra: Bool
+        var draftText: String
+        var draftRewrite: String
+        var draftFeedback: Data?
+        var detail: String
+        var prompt: String
+        var status: String
+        var startedAt: Date?
+        var pausedAt: Date?
+        var pausedSeconds: Double
+        var logID: UUID?
+        var splitLogIDs: [UUID]
+        var writingID: UUID?
+        var progressBefore: Data?
+        var duolingoSectionBefore: Int?
+        var duolingoUnitBefore: Int?
+        var reviewsBefore: Data?
     }
 
     static func encoder() -> JSONEncoder {
@@ -244,7 +287,7 @@ extension BackupFile.CardData {
         self.init(createdAt: card.createdAt, front: card.front, back: card.back, explanation: card.explanation, origin: card.origin,
                   writingID: card.writingID, due: card.due, stability: card.stability, difficulty: card.difficulty,
                   reps: card.reps, lapses: card.lapses, state: card.stateRaw, lastReview: card.lastReview,
-                  language: card.languageCode)
+                  language: card.languageCode, id: card.id)
     }
 
     func makeCard() -> ReviewCard {
@@ -259,6 +302,7 @@ extension BackupFile.CardData {
         card.lapses = lapses
         card.stateRaw = state
         card.lastReview = lastReview
+        if let id { card.id = id }
         return card
     }
 }
@@ -267,7 +311,7 @@ extension BackupFile.LogData {
     init(_ log: ActivityLog) {
         self.init(date: log.date, task: log.taskRaw, minutes: log.minutes, comprehension: log.comprehension,
                   rating: log.rating, isBonus: log.isBonus, difficultyLow: log.difficultyLow, difficultyHigh: log.difficultyHigh,
-                  levelWatched: log.levelWatched, language: log.languageCode)
+                  levelWatched: log.levelWatched, language: log.languageCode, id: log.id)
     }
 
     func makeLog() -> ActivityLog {
@@ -280,7 +324,61 @@ extension BackupFile.LogData {
         log.difficultyLow = difficultyLow
         log.difficultyHigh = difficultyHigh
         log.levelWatched = levelWatched
+        if let id { log.id = id }
         return log
+    }
+}
+
+extension BackupFile.PlanData {
+    init(_ plan: DayPlanRecord) {
+        self.init(language: plan.languageCode, day: plan.day, budgetMinutes: plan.budgetMinutes, band: plan.bandRaw,
+                  tasks: plan.sortedTasks.map(BackupFile.TaskData.init))
+    }
+
+    /// The plan and its tasks, ready to insert (the tasks are linked to the plan).
+    func makePlan() -> (plan: DayPlanRecord, tasks: [PlannedTaskRecord]) {
+        let plan = DayPlanRecord(day: day, budgetMinutes: budgetMinutes, band: Band(rawValue: band) ?? .a2_1)
+        plan.bandRaw = band
+        plan.languageCode = language
+        let records = tasks.map { $0.makeTask() }
+        records.forEach { $0.plan = plan }
+        return (plan, records)
+    }
+}
+
+extension BackupFile.TaskData {
+    init(_ task: PlannedTaskRecord) {
+        self.init(task: task.taskRaw, order: task.order, minutesPlanned: task.minutesPlanned, isAnchor: task.isAnchor,
+                  isExtra: task.isExtra, draftText: task.draftText, draftRewrite: task.draftRewrite, draftFeedback: task.draftFeedback,
+                  detail: task.detailRaw, prompt: task.prompt, status: task.statusRaw, startedAt: task.startedAt,
+                  pausedAt: task.pausedAt, pausedSeconds: task.pausedSeconds, logID: task.logID, splitLogIDs: task.splitLogIDs,
+                  writingID: task.writingID, progressBefore: task.progressBefore, duolingoSectionBefore: task.duolingoSectionBefore,
+                  duolingoUnitBefore: task.duolingoUnitBefore, reviewsBefore: task.reviewsBefore)
+    }
+
+    func makeTask() -> PlannedTaskRecord {
+        let record = PlannedTaskRecord(restoredOrder: order)
+        record.taskRaw = task
+        record.minutesPlanned = minutesPlanned
+        record.prompt = prompt
+        record.isAnchor = isAnchor
+        record.isExtra = isExtra
+        record.draftText = draftText
+        record.draftRewrite = draftRewrite
+        record.draftFeedback = draftFeedback
+        record.detailRaw = detail
+        record.statusRaw = status
+        record.startedAt = startedAt
+        record.pausedAt = pausedAt
+        record.pausedSeconds = pausedSeconds
+        record.logID = logID
+        record.splitLogIDs = splitLogIDs
+        record.writingID = writingID
+        record.progressBefore = progressBefore
+        record.duolingoSectionBefore = duolingoSectionBefore
+        record.duolingoUnitBefore = duolingoUnitBefore
+        record.reviewsBefore = reviewsBefore
+        return record
     }
 }
 

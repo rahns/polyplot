@@ -312,6 +312,9 @@ final class AppModel {
         let everyLog = (try? context.fetch(FetchDescriptor<ActivityLog>(sortBy: [SortDescriptor(\.date)]))) ?? []
         let writing = (try? context.fetch(FetchDescriptor<WritingEntry>(sortBy: [SortDescriptor(\.date)]))) ?? []
         let cards = (try? context.fetch(FetchDescriptor<ReviewCard>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []
+        // Today's plan in every language (and any plan made ahead for a later day); earlier days' plans aren't kept.
+        let startOfToday = calendar.startOfDay(for: .now)
+        let plans = (try? context.fetch(FetchDescriptor<DayPlanRecord>(predicate: #Predicate { $0.day >= startOfToday }))) ?? []
         let file = BackupFile(
             version: BackupFile.currentVersion,
             exportedAt: .now,
@@ -326,7 +329,9 @@ final class AppModel {
             profiles: profiles.map(BackupFile.ProfileData.init),
             activeLanguage: languageCode,
             gemini: BackupFile.GeminiData(apiKey: GeminiKey.current, thinkingLevel: GeminiKey.thinkingLevel.rawValue,
-                                          groqAPIKey: GroqKey.current, defaultChecker: WritingCheckers.defaultChecker.rawValue)
+                                          groqAPIKey: GroqKey.current, defaultChecker: WritingCheckers.defaultChecker.rawValue),
+            plans: plans.map(BackupFile.PlanData.init),
+            momentsSeen: Self.momentsSeen
         )
         return BackupDocument(data: try file.fileData())
     }
@@ -369,6 +374,13 @@ final class AppModel {
         for card in file.cards ?? [] {
             context.insert(card.makeCard())
         }
+        for data in file.plans ?? [] {
+            let restored = data.makePlan()
+            context.insert(restored.plan)
+            restored.tasks.forEach(context.insert)
+        }
+        // Moments already shown before the backup aren't shown again.
+        Self.momentsSeen = Array(Set(Self.momentsSeen).union(file.momentsSeen ?? []))
         try? context.save()
         weekStartsOnSunday = profile?.weekStartsOnSunday ?? false
         save()
@@ -776,10 +788,18 @@ final class AppModel {
         let defaults = UserDefaults.standard
         // Moments are per language; Spanish keeps the plain keys it has always had.
         let key = ActiveLanguage.code == LanguagePack.defaultCode ? key : "\(ActiveLanguage.code).\(key)"
-        var seen = Set(defaults.stringArray(forKey: "moments.seen") ?? [])
+        var seen = Set(defaults.stringArray(forKey: momentsSeenKey) ?? [])
         guard seen.insert(key).inserted else { return false }
-        defaults.set(Array(seen), forKey: "moments.seen")
+        defaults.set(Array(seen), forKey: momentsSeenKey)
         return true
+    }
+
+    private static let momentsSeenKey = "moments.seen"
+
+    /// Every one-off moment already shown (all languages), kept in backups.
+    static var momentsSeen: [String] {
+        get { UserDefaults.standard.stringArray(forKey: momentsSeenKey) ?? [] }
+        set { UserDefaults.standard.set(newValue.sorted(), forKey: momentsSeenKey) }
     }
 
     private static func dayKey(_ date: Date) -> String {

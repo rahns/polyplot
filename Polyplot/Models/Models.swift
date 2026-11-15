@@ -254,6 +254,11 @@ protocol LanguageTagged: AnyObject {
         self.prompt = prompt
     }
 
+    /// For restoring a backup (`BackupFile.TaskData`): every other field is set afterwards.
+    init(restoredOrder order: Int) {
+        self.order = order
+    }
+
     var task: TaskKind { TaskKind(rawValue: taskRaw) ?? .gradedWatch }
     var detail: TaskDetail { TaskDetailCoding.decode(detailRaw) }
 

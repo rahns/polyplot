@@ -199,7 +199,7 @@ Share (send a friend the latest release, and **Report a bug or suggest something
 | Weekly minutes go up | A light sweep runs along the "This week" bar | A light tap for each 25% of the weekly goal just passed |
 | Weekly goal met | Fireworks (particle `Canvas`) behind a "¡Meta cumplida!" card with Poly cheering; over any tab, once a week | `.success`, then a tap per burst |
 | Streak milestone (7, 30, 100, 365 days) | The screen dims behind it (the app background at 92%), then a big flame swells and beats twice with the day count; Poly's message as a banner on Today; once per milestone | Heartbeat (heavy–medium, twice) |
-| Streak freeze used | On the next visit to the path, an ice crystal forms over the flame and shatters and the freeze count drops; a banner on Today says which day it saved | Crack (rigid, then light) |
+| Streak freeze used | On the next visit to the path, an ice crystal forms over the flame and shatters and the freeze count drops; a banner on Today says which day it saved: its weekday if that was yesterday, otherwise the date too ("Sunday 8 November"), so an older freeze shown later (after a restore, say) is never mistaken for today | Crack (rigid, then light) |
 | Streak freeze earned | The snowflake in the path header bounces; a banner on Today that just says "🧊 +1 streak freeze" (once, within a week of earning it) | — |
 | Week turns gold | The week banner flips over to its gold "¡Semana completa!" side and the seal stamps down; once, the first time the path shows it | Stamp (heavy + rigid) |
 | Poly tapped | A random trick: a flip, a spin, a squash-and-stretch hop, or a speech bubble ("¡Vamos!", "¡Olé!"…) | Light tap |

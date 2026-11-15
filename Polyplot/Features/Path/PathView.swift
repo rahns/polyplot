@@ -269,13 +269,23 @@ struct PathView: View {
         }
     }
 
+    /// The day a freeze covered: its weekday if that was yesterday, otherwise the date too ("Sunday 8 November"),
+    /// so an older freeze shown later is never mistaken for today.
+    private func freezeDayName(_ day: Date) -> String {
+        let calendar = Calendar.current
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: .now), calendar.isDate(day, inSameDayAs: yesterday) {
+            return day.formatted(.dateTime.weekday(.wide))
+        }
+        return day.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
     /// One-off moments for the path: a freeze that saved the streak, and a newly completed unit.
     private func playMoments(_ map: PathMap) {
         if let day = model.takeUnseenFreeze() {
             freezeShatters += 1
             model.banner = AppModel.Banner(
                 title: "🧊 A streak freeze saved you",
-                message: "Nothing was logged on \(day.formatted(.dateTime.weekday(.wide))), so a freeze kept the streak going. Freezes are earned at a 7-day streak, then every 14 days after that (you can hold \(StreakCalculator.maxFreezes))."
+                message: "Nothing was logged on \(freezeDayName(day)), so a freeze kept the streak going. Freezes are earned at a 7-day streak, then every 14 days after that (you can hold \(StreakCalculator.maxFreezes))."
             )
         } else if model.takeUnseenFreezeEarned() != nil {
             freezeEarned += 1
