@@ -289,9 +289,15 @@ extension UTType {
     /// A Polyplot backup (`.polyplot`), declared in Info.plist (project.yml: UTExportedTypeDeclarations).
     static let polyplotBackup = UTType(exportedAs: "com.rahns.polyplot.backup", conformingTo: .data)
 
-    /// One-time import: backups saved before the app was renamed, by their file extension, so the picker
-    /// offers them and data can move to the renamed app. Remove once that's done (docs/04-data-model.md §4.3).
-    static let legacyBackup = UTType(filenameExtension: "rumbo", conformingTo: .data)
+    /// One-time import: backups saved before the app was renamed, so the picker offers them and data can
+    /// move to the renamed app. Their type is declared as imported in Info.plist (project.yml:
+    /// UTImportedTypeDeclarations), so the picker recognises them whether or not the old app is still
+    /// installed. Remove once that's done (docs/04-data-model.md §4.3).
+    static let legacyBackup = UTType(importedAs: "com.rahns.rumbo.backup", conformingTo: .data)
+
+    /// Everything the restore picker accepts.
+    static let restorableBackups: [UTType] = [.polyplotBackup, .legacyBackup]
+        + [UTType(filenameExtension: "rumbo", conformingTo: .data)].compactMap { $0 }
 }
 
 struct BackupDocument: FileDocument {
@@ -322,7 +328,7 @@ struct BackupImportPicker: UIViewControllerRepresentable {
     let onFinish: (Result<Data, Error>?) -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.polyplotBackup] + [UTType.legacyBackup].compactMap { $0 }, asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: UTType.restorableBackups, asCopy: true)
         picker.allowsMultipleSelection = false
         picker.delegate = context.coordinator
         return picker

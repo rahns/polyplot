@@ -51,6 +51,13 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension: [polyplot]
               public.mime-type: [application/x-polyplot-backup]
+        # One-time import of backups from before the rename (docs/04-data-model.md §4.3). Remove with it.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.rahns.rumbo.backup
+            UTTypeDescription: Backup from before the rename
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [rumbo]
         CFBundleURLTypes:
           - CFBundleURLName: com.rahns.polyplot
             CFBundleURLSchemes: [polyplot]
