@@ -382,6 +382,8 @@ public struct Phrasebook: Equatable, Sendable {
     public let daysInARow: String
     /// The daily reminder's title.
     public let reminderTitle: String
+    /// The writing box's placeholder ("Escribe aquí…").
+    public let writeHere: String
     /// What Poly says when tapped.
     public let squawks: [String]
     public let levelNames: [Band: String]
@@ -389,7 +391,7 @@ public struct Phrasebook: Equatable, Sendable {
     public init(week: String, weekComplete: String, weekCompleteGold: String, today: String, done: String,
                 goodMorning: String, goodAfternoon: String, goodEvening: String, exclamationEnd: String, hello: String,
                 yes: String, notYet: String, congratulations: String, letsGo: String, wellDone: String, amazing: String, goalReached: String,
-                daysInARow: String, reminderTitle: String, squawks: [String], levelNames: [Band: String]) {
+                daysInARow: String, reminderTitle: String, writeHere: String, squawks: [String], levelNames: [Band: String]) {
         self.week = week
         self.weekComplete = weekComplete
         self.weekCompleteGold = weekCompleteGold
@@ -409,6 +411,7 @@ public struct Phrasebook: Equatable, Sendable {
         self.goalReached = goalReached
         self.daysInARow = daysInARow
         self.reminderTitle = reminderTitle
+        self.writeHere = writeHere
         self.squawks = squawks
         self.levelNames = levelNames
     }
@@ -426,7 +429,7 @@ public struct Phrasebook: Equatable, Sendable {
     /// Every string, for checking that none is empty.
     public var allStrings: [String] {
         [week, weekComplete, weekCompleteGold, today, done, goodMorning, goodAfternoon, goodEvening, exclamationEnd, hello,
-         yes, notYet, congratulations, letsGo, wellDone, amazing, goalReached, daysInARow, reminderTitle] + squawks + Band.allCases.map { levelNames[$0] ?? "" }
+         yes, notYet, congratulations, letsGo, wellDone, amazing, goalReached, daysInARow, reminderTitle, writeHere] + squawks + Band.allCases.map { levelNames[$0] ?? "" }
     }
 }
 
@@ -458,6 +461,7 @@ extension Phrasebook {
         goalReached: "Goal reached!",
         daysInARow: "%d days in a row!",
         reminderTitle: "Ready for today?",
+        writeHere: "Write here…",
         squawks: ["Let's go!", "Nice!", "Hello!", "Yay!", "Great!", "Keep going!"],
         levelNames: [.a1_1: "Beginner", .a1_2: "Starter", .a2_1: "Explorer", .a2_2: "Traveller",
                      .b1_1: "Wanderer", .b1_2: "Talker", .b2_1: "Fluent", .b2_2: "Local"])
@@ -468,7 +472,7 @@ extension Phrasebook {
                    goodMorning: native.goodMorning, goodAfternoon: native.goodAfternoon, goodEvening: native.goodEvening,
                    exclamationEnd: native.exclamationEnd, hello: native.hello, yes: yes, notYet: notYet,
                    congratulations: congratulations, letsGo: letsGo, wellDone: wellDone, amazing: amazing, goalReached: goalReached,
-                   daysInARow: daysInARow, reminderTitle: native.reminderTitle, squawks: native.squawks, levelNames: native.levelNames)
+                   daysInARow: daysInARow, reminderTitle: native.reminderTitle, writeHere: writeHere, squawks: native.squawks, levelNames: native.levelNames)
     }
 }
 

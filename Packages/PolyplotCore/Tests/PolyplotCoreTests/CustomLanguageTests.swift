@@ -94,3 +94,15 @@ import Testing
         #expect(CustomSource.missingStrands(sources, covered: [.output]) == [.languageFocused], "Polyplot's writing fills speaking & writing")
     }
 }
+
+@Suite struct WritingPlaceholderTests {
+    /// The writing box's placeholder is in the language being learned, never Spanish for everyone.
+    @Test func eachLanguageHasItsOwn() {
+        #expect(LanguagePack.spanish.phrases.writeHere == "Escribe aquí…")
+        #expect(LanguagePack.french.phrases.writeHere == "Écris ici…")
+        #expect(LanguagePack.custom(code: "x-test0009", name: "Welsh", flag: "🏴").phrases.writeHere == "Write here…")
+        // A complete beginner sees it in English, like the other interface words.
+        #expect(LanguagePack.spanish.phrases(for: .a1_1).writeHere == "Write here…")
+        #expect(LanguagePack.spanish.phrases(for: .a2_1).writeHere == "Escribe aquí…")
+    }
+}

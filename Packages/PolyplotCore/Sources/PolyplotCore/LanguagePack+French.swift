@@ -115,6 +115,7 @@ extension LanguagePack {
             goalReached: "Objectif atteint\u{00A0}!",
             daysInARow: "%d jours d'affilée\u{00A0}!",
             reminderTitle: "On y va\u{00A0}?",
+            writeHere: "Écris ici…",
             squawks: ["Allez\u{00A0}!", "Bravo\u{00A0}!", "Salut\u{00A0}!", "Super\u{00A0}!", "Génial\u{00A0}!", "Courage\u{00A0}!"],
             levelNames: [.a1_1: "Débutant", .a1_2: "Apprenti", .a2_1: "Explorateur", .a2_2: "Voyageur", .b1_1: "Flâneur", .b1_2: "Bavard", .b2_1: "À l'aise", .b2_2: "Habitué"]),
         catalog: CatalogSource(

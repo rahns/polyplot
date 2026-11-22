@@ -40,7 +40,8 @@ struct GuidedWritingView: View {
 
     private var writing: some View {
         VStack(alignment: .leading, spacing: 12) {
-            editor(text: $draft, placeholder: "Escribe aquí…")
+            // In the language being learned (English for a beginner, or a language Polyplot doesn't know).
+            editor(text: $draft, placeholder: ActiveLanguage.phrases.writeHere)
             wordCount(draft, target: Prompts.wordTarget(for: band))
             if let errorMessage {
                 Text(errorMessage)
