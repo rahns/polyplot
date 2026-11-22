@@ -5,6 +5,7 @@ struct DiagnosticsView: View {
     @State private var model = DiagnosticsModel()
     @State private var copied = false
     @State private var practicingGate = false
+    @State private var notificationMessage: String?
 
     var body: some View {
         List {
@@ -23,6 +24,17 @@ struct DiagnosticsView: View {
                 }
             } header: {
                 Text("Checks · Polyplot \(DiagnosticsModel.appVersion)")
+            }
+
+            Section("Notifications") {
+                Button("Send a test notification", systemImage: "bell.badge") {
+                    Task {
+                        let allowed = await Reminders.sendTest()
+                        notificationMessage = allowed
+                            ? "A test notification arrives in 5 seconds. It shows even with Polyplot open."
+                            : "Notifications are off for Polyplot. Turn them on in the iPhone's Settings → Notifications → Polyplot."
+                    }
+                }
             }
 
             Section("Live Activity") {
@@ -98,6 +110,9 @@ struct DiagnosticsView: View {
         .task { await model.runAll() }
         .fullScreenCover(isPresented: $practicingGate) {
             GateView(isPractice: true)
+        }
+        .alert(notificationMessage ?? "", isPresented: Binding(get: { notificationMessage != nil }, set: { if !$0 { notificationMessage = nil } })) {
+            Button("OK", role: .cancel) {}
         }
     }
 }

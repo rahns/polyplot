@@ -188,7 +188,7 @@ Settings is grouped by topic (`SettingsView`), in this order:
 - **"Spanish 🇪🇸"** (the language being learned; the heading sits above the first section):
   - **Your plan:** Goal ("B2 by Mar 2027"), **Sources** ("5 on · 2 custom", opens `SourcesSettingsView`: the built-in sources with their info sheets and switches under "Built in", Custom sources under "Your own", and "Where you are" with each course's progress steppers), Classes/Tutoring ("Tue, Thu · 60 min"), and **Plan balance** ("For your level", or the custom split in its colours; the page starts with a **Use my own balance** toggle, shows Polyplot's split for the level while it's off and the sliders while it's on). Footer: the weekly goal's minutes.
   - **Daily plan options:** Travel mode ("A real-world Spanish mission every day"), Always include Duolingo ("If you're keeping a streak going"), Ready for voice notes, Ready for live calls (these two only with an exchange partner).
-  - **Reminders & week:** Daily reminder and its time, Week starts on, Send a test notification.
+  - **Reminders & week:** Daily reminder and its time, Week starts on. (Send a test notification is in Advanced → Diagnostics → Notifications.)
   - **Writing:** Writing feedback (the AI checkers), Keep writing history, Writing history. Footer: the keys are shared by every language.
   - Start over / Delete Spanish progress.
 - **"All languages":** Appearance (Theme), Backup (save, restore), **Help & about** (Share Polyplot, Report a bug or suggest something, Credits, Advanced), then the version and credit.

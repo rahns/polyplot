@@ -189,14 +189,6 @@ struct SettingsView: View {
                 Text("Monday").tag(false)
                 Text("Sunday").tag(true)
             }
-            Button("Send a test notification", systemImage: "bell.badge") {
-                Task {
-                    let allowed = await Reminders.sendTest()
-                    message = allowed
-                        ? "A test notification arrives in 5 seconds. It shows even with Polyplot open."
-                        : "Notifications are off for Polyplot. Turn them on in the iPhone's Settings → Notifications → Polyplot."
-                }
-            }
         } header: {
             Text("Reminders & week")
         } footer: {
