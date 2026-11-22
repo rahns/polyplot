@@ -39,6 +39,13 @@ public struct LearnerSnapshot: Sendable {
     public var lessons: LessonSchedule
     /// Settings → Plan balance: the learner's own split between the strands, or nil for the band's.
     public var balance: StrandBalance?
+    /// The learner's own sources (Settings → Sources → Custom sources), switched-off ones included.
+    public var customSources: [CustomSource]
+
+    /// The custom sources the planner may use in `strand`: switched on and named, in the learner's order.
+    public func customSources(in strand: Strand) -> [CustomSource] {
+        customSources.filter { $0.isActive && $0.strand == strand }
+    }
 
     /// What share of the day each strand should get: the custom balance, or the band's research-based split,
     /// over the strands the planner can fill today. A strand with nothing to plan (every source for it off,
@@ -67,6 +74,12 @@ public struct LearnerSnapshot: Sendable {
         return kind.minutes
     }
 
+    /// A planned task's range: a custom source's own, otherwise its kind's (`minuteRange(for:)`).
+    public func minuteRange(for kind: TaskKind, detail: TaskDetail) -> MinuteRange {
+        if case .custom(let id) = detail, let source = customSources.first(where: { $0.id == id }) { return source.minuteRange }
+        return minuteRange(for: kind)
+    }
+
     /// Whether the planner has anything it can put on a card in this strand (lessons and logged-only kinds aside).
     public func canPlan(_ strand: Strand) -> Bool {
         TaskKind.allCases.contains { $0.strand == strand && isEligible($0) }
@@ -88,9 +101,11 @@ public struct LearnerSnapshot: Sendable {
         alwaysIncludeDrillApp: Bool = true,
         lessons: LessonSchedule = LessonSchedule(),
         balance: StrandBalance? = nil,
+        customSources: [CustomSource] = [],
         pack: LanguagePack = .spanish
     ) {
         self.pack = pack
+        self.customSources = customSources
         self.balance = balance
         self.band = band
         self.enabledSources = enabledSources
@@ -167,6 +182,9 @@ public struct LearnerSnapshot: Sendable {
         case .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed:
             // Planned from the lesson schedule, never chosen by the planner.
             return false
+        case .customInput, .customStudy, .customOutput, .customFluency:
+            // Planned per source (`customSources(in:)`); the kind can be planned when its strand has one.
+            return !customSources(in: kind.strand).isEmpty
         }
     }
 
@@ -184,10 +202,13 @@ public struct ActivityRecord: Equatable, Sendable {
     public var date: Date
     public var kind: TaskKind
     public var minutes: Int
+    /// For a custom task: which of the learner's sources it was.
+    public var customSourceID: UUID?
 
-    public init(date: Date, kind: TaskKind, minutes: Int) {
+    public init(date: Date, kind: TaskKind, minutes: Int, customSourceID: UUID? = nil) {
         self.date = date
         self.kind = kind
         self.minutes = minutes
+        self.customSourceID = customSourceID
     }
 }

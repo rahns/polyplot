@@ -78,6 +78,8 @@ struct BackupFile: Codable {
         var lessonSchedule: LessonSchedule?
         var pathHistory: PathLayout.PathHistory?
         var strandBalance: StrandBalance?
+        /// Added later: Settings → Sources → Custom sources.
+        var customSources: [CustomSource]?
         /// Version 2: the language this profile is for. Missing means Spanish.
         var language: String?
     }
@@ -96,6 +98,9 @@ struct BackupFile: Codable {
         var language: String?
         /// Added later, so a restored plan's done cards can still be undone. Missing gives a new ID.
         var id: UUID?
+        /// Added later: a custom task's source and its name.
+        var customSourceID: UUID?
+        var customSourceName: String?
     }
 
     struct WritingData: Codable {
@@ -239,6 +244,7 @@ extension BackupFile.ProfileData {
             lessonSchedule: profile.lessonScheduleData == nil ? nil : profile.lessonSchedule,
             pathHistory: profile.pathHistoryData == nil ? nil : profile.pathHistory,
             strandBalance: profile.strandBalance,
+            customSources: profile.customSources.isEmpty ? nil : profile.customSources,
             language: profile.languageCode
         )
     }
@@ -278,6 +284,7 @@ extension BackupFile.ProfileData {
         if let lessonSchedule { profile.lessonSchedule = lessonSchedule }
         if let pathHistory { profile.pathHistory = pathHistory }
         profile.strandBalance = strandBalance
+        profile.customSources = customSources ?? []
         return profile
     }
 }
@@ -311,7 +318,8 @@ extension BackupFile.LogData {
     init(_ log: ActivityLog) {
         self.init(date: log.date, task: log.taskRaw, minutes: log.minutes, comprehension: log.comprehension,
                   rating: log.rating, isBonus: log.isBonus, difficultyLow: log.difficultyLow, difficultyHigh: log.difficultyHigh,
-                  levelWatched: log.levelWatched, language: log.languageCode, id: log.id)
+                  levelWatched: log.levelWatched, language: log.languageCode, id: log.id,
+                  customSourceID: log.customSourceID, customSourceName: log.customSourceName)
     }
 
     func makeLog() -> ActivityLog {
@@ -324,6 +332,8 @@ extension BackupFile.LogData {
         log.difficultyLow = difficultyLow
         log.difficultyHigh = difficultyHigh
         log.levelWatched = levelWatched
+        log.customSourceID = customSourceID
+        log.customSourceName = customSourceName
         if let id { log.id = id }
         return log
     }

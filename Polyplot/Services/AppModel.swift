@@ -214,6 +214,7 @@ final class AppModel {
             alwaysIncludeDrillApp: profile.alwaysIncludeDuolingo,
             lessons: profile.lessonSchedule,
             balance: profile.strandBalance,
+            customSources: profile.customSources,
             pack: profile.pack
         )
     }
@@ -453,12 +454,12 @@ final class AppModel {
         task.pausedAt = nil
         task.pausedSeconds = 0
         save()
-        LiveActivities.start(task: task)
+        LiveActivities.start(task: task, title: title(for: task))
     }
 
     /// Back into a task that was already started: the timer reappears with its elapsed time.
     func resumeSession(_ task: PlannedTaskRecord) {
-        LiveActivities.start(task: task)
+        LiveActivities.start(task: task, title: title(for: task))
     }
 
     /// Leaving the task screen without logging: the task stays started, but its timer goes away.
@@ -491,6 +492,12 @@ final class AppModel {
         }
         save()
         LiveActivities.update(task: task)
+    }
+
+    /// Picks a paused timer up again once the learner carries on (types, or reviews a card).
+    func resumeIfPaused() {
+        guard activeTask?.isPaused == true else { return }
+        togglePause()
     }
 
     /// Set by the Live Activity's Done button (polyplot://finish): opens the log screen for the active task.
@@ -560,6 +567,10 @@ final class AppModel {
         }
         if task.task == .gradedWatch {
             log.levelWatched = completion.levelWatched
+        }
+        if case .custom(let id) = task.detail {
+            log.customSourceID = id
+            log.customSourceName = customSource(id)?.name
         }
         insert(log)
         task.status = .done
@@ -671,8 +682,14 @@ final class AppModel {
     /// An extra that was undone or stopped without logging (back to planned) is offered again.
     var keepGoingOptions: [PlannedTask] {
         guard let profile, let plan = todayPlan, plan.isComplete else { return [] }
-        let taken = Set(plan.sortedTasks.filter { !$0.isExtra || $0.status != .planned }.map(\.task))
-        return DayPlanner(calendar: calendar).extraTasks(learner: snapshot(for: profile), history: history, today: plan.day, excluding: taken)
+        let takenTasks = plan.sortedTasks.filter { !$0.isExtra || $0.status != .planned }
+        let taken = Set(takenTasks.map(\.task).filter { !$0.isCustom })
+        let takenCustom = Set(takenTasks.compactMap { task -> UUID? in
+            guard case .custom(let id) = task.detail else { return nil }
+            return id
+        })
+        return DayPlanner(calendar: calendar).extraTasks(learner: snapshot(for: profile), history: history, today: plan.day,
+                                                         excluding: taken, excludingCustom: takenCustom)
     }
 
     /// Extras started or done today, in the order they were added.
@@ -684,7 +701,7 @@ final class AppModel {
     func startExtra(_ option: PlannedTask) -> PlannedTaskRecord? {
         guard let profile, let plan = todayPlan else { return nil }
         // Reuse one that was undone or stopped earlier rather than adding a duplicate.
-        if let existing = plan.extraTasks.first(where: { $0.task == option.kind && $0.status == .planned }) {
+        if let existing = plan.extraTasks.first(where: { $0.task == option.kind && $0.detail == option.detail && $0.status == .planned }) {
             start(existing)
             return existing
         }
@@ -899,6 +916,41 @@ final class AppModel {
         return TaskCopy.detail(task.detail)
     }
 
+    // MARK: - Custom sources
+
+    /// The learner's own source with this ID, in the language being learned.
+    func customSource(_ id: UUID) -> CustomSource? {
+        profile?.customSources.first { $0.id == id }
+    }
+
+    /// Settings → Sources → Custom sources: saves the list, and remakes today's plan if nothing's been started.
+    func setCustomSources(_ sources: [CustomSource]) {
+        guard let profile else { return }
+        profile.customSources = sources
+        save()
+        replanTodayIfNotStarted()
+    }
+
+    /// A task's name: a custom source's own (as it is now), otherwise the task kind's.
+    func title(for kind: TaskKind, detail: TaskDetail) -> String {
+        if case .custom(let id) = detail, let source = customSource(id) { return source.name }
+        return TaskCopy.title(for: kind)
+    }
+
+    func title(for task: PlannedTaskRecord) -> String {
+        // A done task whose source has since been deleted keeps the name it was logged with.
+        if case .custom(let id) = task.detail, customSource(id) == nil, let logID = task.logID,
+           let name = logs.first(where: { $0.id == logID })?.customSourceName {
+            return name
+        }
+        return title(for: task.task, detail: task.detail)
+    }
+
+    /// A logged task's name: a custom source's name when it was logged, so history keeps it after a rename or delete.
+    func title(for log: ActivityLog) -> String {
+        log.customSourceName ?? log.customSourceID.flatMap { customSource($0) }?.name ?? TaskCopy.title(for: log.task)
+    }
+
     // MARK: - Mistake deck
 
     var allCards: [ReviewCard] {
@@ -928,6 +980,13 @@ final class AppModel {
         }
         card.schedule = FSRS().review(card.schedule, rating: rating, now: .now)
         save()
+        resumeReviewIfPaused()
+    }
+
+    /// Reviewing is doing the task: a paused mistake-review timer picks up again. Reviewing from the deck
+    /// while another task is paused leaves that one alone.
+    func resumeReviewIfPaused() {
+        if activeTask?.task == .reviewMistakes { resumeIfPaused() }
     }
 
     func addCard(wrong: String, right: String, note: String, origin: String) {
@@ -1240,7 +1299,7 @@ final class AppModel {
         // The plan (skips hidden), then "Keep going" extras once they're done.
         let shown = (plan?.planTasks ?? []).filter { $0.status != .skipped } + (plan?.extraTasks ?? []).filter { $0.status == .done }
         var tasks = shown.map {
-            WidgetSnapshot.TaskLine(title: TaskCopy.title(for: $0.task), symbol: TaskCopy.symbol(for: $0.task),
+            WidgetSnapshot.TaskLine(title: title(for: $0), symbol: TaskCopy.symbol(for: $0.task),
                                     minutes: $0.status == .done ? loggedMinutes(for: $0) ?? $0.minutesPlanned : $0.minutesPlanned,
                                     done: $0.status == .done, colorHex: $0.task.hex, isExtra: $0.isExtra)
         }
@@ -1283,7 +1342,7 @@ final class AppModel {
                                           lessons: profile.lessonSchedule, calendar: calendar).recommended
         let preview = DayPlanner(calendar: calendar).plan(budget: budget, learner: snapshot(for: profile), history: history, today: day)
         return (budget, preview.tasks.map {
-            WidgetSnapshot.TaskLine(title: TaskCopy.title(for: $0.kind), symbol: TaskCopy.symbol(for: $0.kind),
+            WidgetSnapshot.TaskLine(title: title(for: $0.kind, detail: $0.detail), symbol: TaskCopy.symbol(for: $0.kind),
                                     minutes: $0.minutes, done: false, colorHex: $0.kind.hex)
         })
     }

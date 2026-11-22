@@ -27,6 +27,8 @@ enum TaskCopy {
         case .otherOutput: "Other speaking & writing"
         case .otherFluency: "Other fluency practice"
         case .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed: "Class/Tutoring"
+        // Shown only if the source is gone: a custom task is titled with its source's name (`AppModel.title(for:)`).
+        case .customInput, .customStudy, .customOutput, .customFluency: "Your own \(otherName(task.strand).lowercased())"
         }
     }
 
@@ -49,6 +51,10 @@ enum TaskCopy {
         case .otherOutput: "text.bubble.fill"
         case .otherFluency: "hare.fill"
         case .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed: "person.2.fill"
+        case .customInput: "ear.fill"
+        case .customStudy: "books.vertical.fill"
+        case .customOutput: "quote.bubble.fill"
+        case .customFluency: "gauge.with.dots.needle.67percent"
         }
     }
 
@@ -60,6 +66,7 @@ enum TaskCopy {
         case .seriesPart(let episode, let part): "Episode \(episode), part \(part) of \(pack.series?.intensiveParts ?? part)"
         case .seriesEpisode(let episode): "Episode \(episode)"
         case .difficulty(let range): "Videos rated \(range.lowerBound)–\(range.upperBound)"
+        case .custom: nil
         }
     }
 
@@ -71,6 +78,7 @@ enum TaskCopy {
         case .lessonStudy: "Grammar & vocab · counts toward today's time"
         case .lessonMixed: "All-in-one · split across speaking, listening and grammar"
         case .gradedEasy: "Below your level on purpose: easy listening makes what you know come faster."
+        case .customInput, .customStudy, .customOutput, .customFluency: "Your own source · \(otherName(task.strand))"
         default: nil
         }
     }
@@ -122,6 +130,8 @@ enum TaskCopy {
             "Logged with Log other."
         case .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed:
             "Your class or tutoring today. Log it once it's done."
+        case .customInput, .customStudy, .customOutput, .customFluency:
+            "One of your own sources. Open it, use it for the planned time, then come back and log it."
         }
     }
 

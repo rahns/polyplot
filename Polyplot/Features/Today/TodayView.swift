@@ -297,7 +297,7 @@ struct TodayView: View {
                     .foregroundStyle(Palette.secondaryText)
             }
             ForEach(tasks) { task in
-                TaskCardView(task: task, detail: model.detailText(for: task), loggedMinutes: model.loggedMinutes(for: task)) {
+                TaskCardView(task: task, title: model.title(for: task), detail: model.detailText(for: task), loggedMinutes: model.loggedMinutes(for: task)) {
                     if task.status == .active { model.resumeSession(task) } else { model.start(task) }
                     openTask = task
                 } onSkip: {
@@ -354,7 +354,7 @@ struct TodayView: View {
                     .foregroundStyle(Palette.secondaryText)
             }
             ForEach(extras) { task in
-                TaskCardView(task: task, detail: model.detailText(for: task), loggedMinutes: model.loggedMinutes(for: task)) {
+                TaskCardView(task: task, title: model.title(for: task), detail: model.detailText(for: task), loggedMinutes: model.loggedMinutes(for: task)) {
                     if task.status == .active { model.resumeSession(task) } else { model.start(task) }
                     openTask = task
                 } onSkip: {
@@ -362,8 +362,8 @@ struct TodayView: View {
                     withAnimation { model.undo(task) }
                 }
             }
-            ForEach(options, id: \.kind) { option in
-                ExtraOptionRow(option: option, detail: TaskCopy.detail(option.detail)) {
+            ForEach(options, id: \.optionID) { option in
+                ExtraOptionRow(option: option, title: model.title(for: option.kind, detail: option.detail), detail: TaskCopy.detail(option.detail)) {
                     if let record = model.startExtra(option) {
                         openTask = record
                     }
@@ -376,6 +376,7 @@ struct TodayView: View {
 /// One "Keep going" choice: compact, with a Start button.
 struct ExtraOptionRow: View {
     let option: PlannedTask
+    let title: String
     let detail: String?
     let onStart: () -> Void
 
@@ -388,7 +389,7 @@ struct ExtraOptionRow: View {
                 .frame(width: 38, height: 38)
                 .background(Circle().fill(color))
             VStack(alignment: .leading, spacing: 1) {
-                Text(TaskCopy.title(for: option.kind))
+                Text(title)
                     .font(.rounded(.subheadline, weight: .heavy))
                     .foregroundStyle(Palette.ink)
                 Text([detail, "\(option.minutes) min", option.kind.strand.label].compactMap { $0 }.joined(separator: " · "))
@@ -507,6 +508,8 @@ struct BannerCard<Actions: View>: View {
 
 struct TaskCardView: View {
     let task: PlannedTaskRecord
+    /// The task's name: its kind's, or a custom source's (`AppModel.title(for:)`).
+    let title: String
     let detail: String?
     /// Minutes actually logged for a done task; shown next to the struck-out plan when they differ.
     var loggedMinutes: Int?
@@ -538,11 +541,11 @@ struct TaskCardView: View {
                     .buttonStyle(.plain)
                     // Not .disabled: that fades the icon. It only reacts once the task is done or skipped (undo).
                     .allowsHitTesting(finished)
-                    .accessibilityLabel("Undo \(TaskCopy.title(for: kind))")
+                    .accessibilityLabel("Undo \(title)")
                     .accessibilityHint("Marks it as not done again")
                     .accessibilityHidden(!finished)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(TaskCopy.title(for: kind))
+                        Text(title)
                             .font(.rounded(.headline, weight: .heavy))
                             .foregroundStyle(Palette.ink)
                         if let detail {
@@ -605,4 +608,9 @@ struct TaskCardView: View {
         }
         .opacity(finished ? 0.65 : 1)
     }
+}
+
+extension PlannedTask {
+    /// Tells "Keep going" options apart: two custom sources can share a kind.
+    var optionID: String { "\(kind.rawValue)|\(TaskDetailCoding.encode(detail))" }
 }

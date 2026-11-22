@@ -29,6 +29,9 @@ struct TaskSessionView: View {
     @State private var duolingoUnit = 1
     @State private var keyboardVisible = false
     @State private var confirmingFinish = false
+    /// Mistake review: the first due card's answer is showing, and how many have been reviewed.
+    @State private var reviewRevealed = false
+    @State private var reviewedCount = 0
 
     private var kind: TaskKind { task.task }
     private var color: Color { kind.color }
@@ -64,11 +67,23 @@ struct TaskSessionView: View {
             if (startLogging || kind.isLesson) && !logging { beginLogging() }
         }
         // Writing is kept on the task as it's typed, so closing the screen never loses it.
-        .onChange(of: writing) { _, text in task.draftText = text }
-        .onChange(of: rewrite) { _, text in task.draftRewrite = text }
+        // Typing again picks up a paused timer. Restoring the saved draft (text equal to it) isn't typing.
+        .onChange(of: writing) { _, text in
+            if text != task.draftText { resumeAfterTyping() }
+            task.draftText = text
+        }
+        .onChange(of: rewrite) { _, text in
+            if text != task.draftRewrite { resumeAfterTyping() }
+            task.draftRewrite = text
+        }
         .onChange(of: feedback) { _, result in task.draftFeedback = result.flatMap { try? JSONEncoder().encode($0) } }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
+    }
+
+    private func resumeAfterTyping() {
+        guard task.status == .active, task.isPaused, !logging else { return }
+        model.resumeIfPaused()
     }
 
     private func restoreDraft() {
@@ -121,7 +136,7 @@ struct TaskSessionView: View {
                 .background(Circle().fill(color))
                 .background(Circle().fill(color.edge()).offset(y: 4))
             VStack(alignment: .leading, spacing: 2) {
-                Text(TaskCopy.title(for: kind))
+                Text(model.title(for: task))
                     .font(.rounded(.title2, weight: .black))
                     .foregroundStyle(Palette.ink)
                 if let detail = model.detailText(for: task) {
@@ -161,7 +176,7 @@ struct TaskSessionView: View {
             } else if kind == .writeQuick {
                 writingEditor
             } else if kind == .reviewMistakes {
-                ReviewDeckView()
+                ReviewDeckView(revealed: reviewRevealed, reviewed: reviewedCount)
             }
             if kind == .contentWatch, let current = model.currentContent {
                 Label("\(current.title) · \(current.whereToFind)", systemImage: "sparkles.tv.fill")
@@ -364,10 +379,22 @@ struct TaskSessionView: View {
                             .disabled(!canSave)
                     }
                 } else {
-                    Button("I'm done") {
-                        if needsFinishConfirmation { confirmingFinish = true } else { beginLogging() }
+                    VStack(spacing: 16) {
+                        // The card's buttons sit here, above "I'm done", so they're never a scroll away.
+                        if kind == .reviewMistakes {
+                            ReviewControls(revealed: $reviewRevealed, reviewed: $reviewedCount)
+                        }
+                        if kind == .reviewMistakes && !model.dueCards.isEmpty {
+                            // Quieter while cards are left, so it doesn't look like one of the card's buttons.
+                            Button("I'm done") { beginLogging() }
+                                .buttonStyle(ChunkySecondaryButtonStyle())
+                        } else {
+                            Button("I'm done") {
+                                if needsFinishConfirmation { confirmingFinish = true } else { beginLogging() }
+                            }
+                            .buttonStyle(ChunkyButtonStyle(color: color))
+                        }
                     }
-                    .buttonStyle(ChunkyButtonStyle(color: color))
                 }
             }
             .padding(20)

@@ -2,10 +2,12 @@ import PolyplotCore
 import SwiftUI
 
 /// Reviews due mistake cards one at a time: front → "Show answer" → Again / Good / Easy (FSRS, R7).
+/// Only the card is drawn here; its buttons are `ReviewControls`, pinned below the scrolling content
+/// so they're always in reach, however long the card.
 struct ReviewDeckView: View {
     @Environment(AppModel.self) private var model
-    @State private var revealed = false
-    @State private var reviewed = 0
+    let revealed: Bool
+    let reviewed: Int
 
     var body: some View {
         let due = model.dueCards
@@ -18,16 +20,6 @@ struct ReviewDeckView: View {
                 CardFace(card: card, revealed: revealed)
                     .id(card.id)
                     .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
-                if revealed {
-                    HStack(spacing: 10) {
-                        rateButton("Again", .again, Palette.coral, card)
-                        rateButton("Good", .good, Palette.leaf, card)
-                        rateButton("Easy", .easy, Palette.sky, card)
-                    }
-                } else {
-                    Button("Show answer") { withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { revealed = true } }
-                        .buttonStyle(ChunkyButtonStyle(color: Palette.sky))
-                }
             } else {
                 PolyView(mood: .cheering, size: 110, celebrate: reviewed)
                 Text(reviewed == 0 ? "Nothing due right now" : "All caught up!")
@@ -42,6 +34,35 @@ struct ReviewDeckView: View {
         .frame(maxWidth: .infinity)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: due.first?.id)
     }
+}
+
+/// "Show answer", then Again / Good / Easy, for the first due card. Empty once nothing is due.
+/// Reviewing resumes a paused task timer.
+struct ReviewControls: View {
+    @Environment(AppModel.self) private var model
+    @Binding var revealed: Bool
+    @Binding var reviewed: Int
+
+    var body: some View {
+        if let card = model.dueCards.first {
+            Group {
+                if revealed {
+                    HStack(spacing: 10) {
+                        rateButton("Again", .again, Palette.coral, card)
+                        rateButton("Good", .good, Palette.leaf, card)
+                        rateButton("Easy", .easy, Palette.sky, card)
+                    }
+                } else {
+                    Button("Show answer") {
+                        model.resumeReviewIfPaused()
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { revealed = true }
+                    }
+                    .buttonStyle(ChunkyButtonStyle(color: Palette.sky))
+                }
+            }
+            .transition(.opacity)
+        }
+    }
 
     private func rateButton(_ title: String, _ rating: FSRS.Rating, _ color: Color, _ card: ReviewCard) -> some View {
         Button(title) {
@@ -52,6 +73,25 @@ struct ReviewDeckView: View {
             }
         }
         .buttonStyle(ChunkyButtonStyle(color: color))
+    }
+}
+
+/// Reviewing outside a task (Progress → Mistake deck → Review): the card scrolls, its buttons stay put.
+struct StandaloneReviewView: View {
+    @State private var revealed = false
+    @State private var reviewed = 0
+
+    var body: some View {
+        ScrollView {
+            ReviewDeckView(revealed: revealed, reviewed: reviewed).padding(20)
+        }
+        .safeAreaInset(edge: .bottom) {
+            ReviewControls(revealed: $revealed, reviewed: $reviewed)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Palette.background)
+        }
+        .background(Palette.background.ignoresSafeArea())
     }
 }
 
@@ -97,8 +137,7 @@ struct MistakeDeckView: View {
             Group {
             Section {
                 NavigationLink {
-                    ScrollView { ReviewDeckView().padding(20) }
-                        .background(Palette.background.ignoresSafeArea())
+                    StandaloneReviewView()
                         .navigationTitle("Review")
                 } label: {
                     Label(dueCount == 0 ? "Nothing due right now" : "Review \(dueCount) due", systemImage: "arrow.triangle.2.circlepath")

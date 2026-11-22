@@ -47,6 +47,24 @@ public enum TaskKind: String, CaseIterable, Codable, Sendable {
     case lessonStudy = "lesson.study"
     /// An all-in-one lesson: planned as one card, logged as three equal parts (`LessonType.split`).
     case lessonMixed = "lesson.mixed"
+    /// A task from one of the learner's own sources (Settings → Sources → Custom sources), one kind per strand.
+    /// Which source it is travels in the task's detail (`TaskDetail.custom`) and the log's `customSourceID`.
+    case customInput = "custom.input"
+    case customStudy = "custom.study"
+    case customOutput = "custom.output"
+    case customFluency = "custom.fluency"
+
+    /// The kind a custom source in `strand` is planned and logged as.
+    public static func custom(for strand: Strand) -> TaskKind {
+        switch strand {
+        case .input: .customInput
+        case .languageFocused: .customStudy
+        case .output: .customOutput
+        case .fluency: .customFluency
+        }
+    }
+
+    public var isCustom: Bool { self == .customInput || self == .customStudy || self == .customOutput || self == .customFluency }
 
     /// The lesson kind for a lesson type; all-in-one is planned as one mixed card.
     public static func lesson(for type: LessonType) -> TaskKind {
@@ -73,11 +91,11 @@ public enum TaskKind: String, CaseIterable, Codable, Sendable {
     public var strand: Strand {
         switch self {
         // Intensive Extra viewing is captioned input with a short shadowing step, so it sits in input.
-        case .gradedWatch, .seriesIntensive, .seriesExtensive, .contentWatch, .lessonInput: .input
+        case .gradedWatch, .seriesIntensive, .seriesExtensive, .contentWatch, .lessonInput, .customInput: .input
         // An all-in-one lesson is logged split across three strands; as a planned card it shows as speaking.
-        case .writeGuided, .exchangeText, .exchangeVoice, .exchangeCall, .missionTravel, .otherOutput, .lessonOutput, .lessonMixed: .output
-        case .drillLesson, .courseTrack, .reviewMistakes, .otherStudy, .lessonStudy: .languageFocused
-        case .gradedEasy, .writeQuick, .fluency432, .otherFluency: .fluency
+        case .writeGuided, .exchangeText, .exchangeVoice, .exchangeCall, .missionTravel, .otherOutput, .lessonOutput, .lessonMixed, .customOutput: .output
+        case .drillLesson, .courseTrack, .reviewMistakes, .otherStudy, .lessonStudy, .customStudy: .languageFocused
+        case .gradedEasy, .writeQuick, .fluency432, .otherFluency, .customFluency: .fluency
         }
     }
 
@@ -102,6 +120,8 @@ public enum TaskKind: String, CaseIterable, Codable, Sendable {
         case .missionTravel: MinuteRange(min: 3, standard: 3, max: 3)
         case .otherStudy, .otherOutput, .otherFluency: MinuteRange(min: 1, standard: 20, max: 600)
         case .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed: MinuteRange(min: 5, standard: 60, max: 240)
+        // A custom task's real range is its source's (`CustomSource.minuteRange`); this is only a fallback.
+        case .customInput, .customStudy, .customOutput, .customFluency: MinuteRange(min: 5, standard: 15, max: 30)
         }
     }
 
@@ -116,7 +136,8 @@ public enum TaskKind: String, CaseIterable, Codable, Sendable {
         case .writeGuided, .writeQuick: .writing
         case .exchangeText, .exchangeVoice, .exchangeCall: .exchange
         case .fluency432, .reviewMistakes, .missionTravel, .otherStudy, .otherOutput, .otherFluency,
-             .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed: nil
+             .lessonOutput, .lessonInput, .lessonStudy, .lessonMixed,
+             .customInput, .customStudy, .customOutput, .customFluency: nil
         }
     }
 
@@ -131,7 +152,7 @@ public enum TaskKind: String, CaseIterable, Codable, Sendable {
     /// Whether logged minutes add to the learner's input hours.
     public var countsAsInput: Bool {
         switch self {
-        case .gradedWatch, .gradedEasy, .seriesIntensive, .seriesExtensive, .contentWatch, .lessonInput: true
+        case .gradedWatch, .gradedEasy, .seriesIntensive, .seriesExtensive, .contentWatch, .lessonInput, .customInput: true
         default: false
         }
     }

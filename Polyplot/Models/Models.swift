@@ -61,6 +61,8 @@ protocol LanguageTagged: AnyObject {
     var pathHistoryData: Data?
     /// Encoded `StrandBalance` (Settings → Plan balance); nil = Polyplot's split for the level.
     var strandBalanceData: Data?
+    /// Encoded `[CustomSource]` (Settings → Sources → Custom sources); nil = none.
+    var customSourcesData: Data?
 
     init() {}
 
@@ -97,6 +99,11 @@ protocol LanguageTagged: AnyObject {
     var strandBalance: StrandBalance? {
         get { strandBalanceData.flatMap { try? JSONDecoder().decode(StrandBalance.self, from: $0) } }
         set { strandBalanceData = newValue.flatMap { try? JSONEncoder().encode($0) } }
+    }
+
+    var customSources: [CustomSource] {
+        get { customSourcesData.flatMap { try? JSONDecoder().decode([CustomSource].self, from: $0) } ?? [] }
+        set { customSourcesData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
     }
 
     var pathHistory: PathLayout.PathHistory {
@@ -145,6 +152,9 @@ protocol LanguageTagged: AnyObject {
     var difficultyHigh: Int?
     /// Dreaming Spanish (not Easy Dreaming): the difficulty (0–100) the learner says they watched, for the Progress chart.
     var levelWatched: Int?
+    /// A custom task: which of the learner's sources it was, and its name then (kept if the source is renamed or deleted).
+    var customSourceID: UUID?
+    var customSourceName: String?
 
     init(date: Date, task: TaskKind, minutes: Int) {
         self.date = date
@@ -155,7 +165,7 @@ protocol LanguageTagged: AnyObject {
     var task: TaskKind { TaskKind(rawValue: taskRaw) ?? .gradedWatch }
 
     var record: ActivityRecord {
-        ActivityRecord(date: date, kind: task, minutes: minutes)
+        ActivityRecord(date: date, kind: task, minutes: minutes, customSourceID: customSourceID)
     }
 
     /// The level watched, for the Progress chart. Older Dreaming Spanish logs without an answer use the middle of their range.
@@ -222,7 +232,7 @@ protocol LanguageTagged: AnyObject {
     var draftRewrite: String = ""
     /// Encoded `CorrectionService.Result` once the draft has been checked.
     var draftFeedback: Data?
-    /// Encoded `TaskDetail`, e.g. "lt:13", "extra:2:1", "ds:40:48".
+    /// Encoded `TaskDetail`, e.g. "lt:13", "extra:2:1", "ds:40:48", "custom:<source id>".
     var detailRaw: String = ""
     /// The prompt shown for output tasks, fixed when the plan is made.
     var prompt: String = ""
@@ -368,10 +378,12 @@ enum TaskDetailCoding {
         case .seriesPart(let episode, let part): "extra:\(episode):\(part)"
         case .seriesEpisode(let episode): "extra:\(episode)"
         case .difficulty(let range): "ds:\(range.lowerBound):\(range.upperBound)"
+        case .custom(let id): "custom:\(id.uuidString)"
         }
     }
 
     static func decode(_ raw: String) -> TaskDetail {
+        if raw.hasPrefix("custom:") { return UUID(uuidString: String(raw.dropFirst("custom:".count))).map(TaskDetail.custom) ?? .none }
         let parts = raw.split(separator: ":").map(String.init)
         let numbers = parts.dropFirst().compactMap(Int.init)
         switch (parts.first, numbers.count) {

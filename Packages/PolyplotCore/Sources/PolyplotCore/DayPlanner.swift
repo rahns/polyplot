@@ -9,6 +9,8 @@ public enum TaskDetail: Equatable, Sendable {
     case seriesEpisode(Int)
     /// A difficulty range in the graded video library.
     case difficulty(ClosedRange<Int>)
+    /// One of the learner's own sources (`CustomSource.id`).
+    case custom(UUID)
 }
 
 public struct PlannedTask: Equatable, Sendable {
@@ -79,21 +81,28 @@ public struct DayPlanner: Sendable {
 
     /// "Keep going" options once today's plan is complete: every task the learner can do that isn't
     /// already in today's plan, at its standard length, the most-behind strand first (§2.5 step 8).
-    public func extraTasks(learner: LearnerSnapshot, history: [ActivityRecord], today: Date, excluding planned: Set<TaskKind>) -> [PlannedTask] {
+    public func extraTasks(learner: LearnerSnapshot, history: [ActivityRecord], today: Date, excluding planned: Set<TaskKind>,
+                           excludingCustom plannedCustom: Set<UUID> = []) -> [PlannedTask] {
         // Today's practice counts too: it's already done.
         let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: today))!
         let window = recentRecords(history, before: startOfTomorrow)
         let builder = PlanBuilder(budget: 0, learner: learner, window: window)
-        let order = Dictionary(uniqueKeysWithValues: TaskKind.allCases.enumerated().map { ($1, $0) })
-        return TaskKind.allCases
-            // A strand at 0% (fluency at A1, or a custom balance) isn't offered here either.
-            .filter { !planned.contains($0) && learner.isEligible($0) && (learner.strandTargets[$0.strand] ?? 0) > 0 }
-            .sorted { lhs, rhs in
-                let left = builder.deficit(lhs.strand), right = builder.deficit(rhs.strand)
-                if left != right { return left > right }
-                return order[lhs]! < order[rhs]!
-            }
+        // A strand at 0% (fluency at A1, or a custom balance) isn't offered here either.
+        func offered(_ strand: Strand) -> Bool { (learner.strandTargets[strand] ?? 0) > 0 }
+        let builtIn = TaskKind.allCases
+            .filter { !$0.isCustom && !planned.contains($0) && learner.isEligible($0) && offered($0.strand) }
             .map { PlannedTask(kind: $0, minutes: builder.fixedMinutes(for: $0) ?? learner.minuteRange(for: $0).standard, detail: builder.detail(for: $0), isAnchor: false) }
+        // The learner's own sources come after the built-in tasks of their strand.
+        let custom = learner.customSources
+            .filter { $0.isActive && !plannedCustom.contains($0.id) && offered($0.strand) }
+            .map { PlannedTask(kind: $0.kind, minutes: $0.minuteRange.standard, detail: .custom($0.id), isAnchor: false) }
+        return (builtIn + custom).enumerated()
+            .sorted { lhs, rhs in
+                let left = builder.deficit(lhs.element.kind.strand), right = builder.deficit(rhs.element.kind.strand)
+                if left != right { return left > right }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 
     /// Records from the 6 days before `today` (today itself is what's being planned).
@@ -177,27 +186,42 @@ private struct PlanBuilder {
         learner.isEligible(.courseTrack) && !tasks.contains { $0.kind == .courseTrack } && deficit(.languageFocused) > 0
     }
 
+    /// What can go on a card: a built-in task, or one of the learner's own sources.
+    enum Option {
+        case kind(TaskKind)
+        case custom(CustomSource)
+    }
+
     /// Adds a new card to `strand`. Returns false if nothing in the strand fits.
     private mutating func addCard(in strand: Strand) -> Bool {
         let wanted = Int((deficit(strand) / 5).rounded()) * 5
-        for kind in candidates(for: strand) where !tasks.contains(where: { $0.kind == kind }) {
-            if let fixed = fixedMinutes(for: kind) {
-                guard fixed <= remaining else { continue }
-                add(kind, minutes: fixed)
+        for option in options(for: strand) {
+            switch option {
+            case .kind(let kind):
+                if let fixed = fixedMinutes(for: kind) {
+                    guard fixed <= remaining else { continue }
+                    add(kind, minutes: fixed)
+                    return true
+                }
+                let range = learner.minuteRange(for: kind)
+                let minutes = min(min(max(wanted, range.min), range.max), remaining)
+                guard minutes >= range.min else { continue }
+                add(kind, minutes: minutes)
+                return true
+            case .custom(let source):
+                let range = source.minuteRange
+                let minutes = min(min(max(wanted, range.min), range.max), remaining)
+                guard minutes >= range.min else { continue }
+                add(source, minutes: minutes)
                 return true
             }
-            let range = learner.minuteRange(for: kind)
-            let minutes = min(min(max(wanted, range.min), range.max), remaining)
-            guard minutes >= range.min else { continue }
-            add(kind, minutes: minutes)
-            return true
         }
         // A beginner's study strand often has only one source (Duolingo, already in as the warm-up): rather
         // than leaving its share unspent, lengthen the task already planned there, within its range.
         // Beginners only, so plans from A2 up are unchanged.
         if learner.band < .a2_1,
            let index = tasks.firstIndex(where: { $0.kind.strand == strand && !$0.kind.isLesson && fixedMinutes(for: $0.kind) == nil }) {
-            let headroom = learner.minuteRange(for: tasks[index].kind).max - tasks[index].minutes
+            let headroom = range(of: tasks[index]).max - tasks[index].minutes
             let extra = min(headroom, max(wanted, 5), remaining)
             if extra > 0 {
                 tasks[index].minutes += extra
@@ -205,6 +229,48 @@ private struct PlanBuilder {
             }
         }
         return false
+    }
+
+    /// Everything not yet planned that could take a card in `strand`, in order (§2.5 step 3). The learner's
+    /// own sources share the strand with the built-in tasks: due anchors stay first, then a custom source
+    /// goes ahead of the built-in tasks while it has been used less this week than the strand's most-used
+    /// built-in task, and after them otherwise. So over a week the two take turns. With several custom
+    /// sources in a strand, the least used goes first.
+    func options(for strand: Strand) -> [Option] {
+        let builtIn = candidates(for: strand).filter { kind in !tasks.contains { $0.kind == kind } }
+        let custom = customCandidates(for: strand)
+        let anchors = builtIn.filter(isAnchor)
+        let rest = builtIn.filter { !isAnchor($0) }
+        guard let leastUsed = custom.first else { return builtIn.map(Option.kind) }
+        let customFirst = uses(leastUsed) < busiestBuiltInUses(in: strand)
+        return anchors.map(Option.kind)
+            + (customFirst ? custom.map(Option.custom) + rest.map(Option.kind) : rest.map(Option.kind) + custom.map(Option.custom))
+    }
+
+    /// The learner's own sources in `strand` that aren't planned yet, least used this week first.
+    func customCandidates(for strand: Strand) -> [CustomSource] {
+        learner.customSources(in: strand)
+            .filter { source in !tasks.contains { $0.detail == .custom(source.id) } }
+            .enumerated()
+            .sorted { (uses($0.element), $0.offset) < (uses($1.element), $1.offset) }
+            .map(\.element)
+    }
+
+    /// Times a custom source was done in the last 6 days or is already planned today.
+    func uses(_ source: CustomSource) -> Int {
+        window.filter { $0.customSourceID == source.id }.count + tasks.filter { $0.detail == .custom(source.id) }.count
+    }
+
+    /// Times the strand's most-used built-in task was done in the last 6 days or is planned today. With no
+    /// built-in task to plan in the strand, the custom sources have it to themselves.
+    private func busiestBuiltInUses(in strand: Strand) -> Int {
+        let kinds = TaskKind.allCases.filter { $0.strand == strand && !$0.isCustom && learner.isEligible($0) }
+        return kinds.map(count(of:)).max() ?? Int.max
+    }
+
+    /// A planned task's range: a custom source's own, otherwise its kind's.
+    func range(of task: PlannedTask) -> MinuteRange {
+        learner.minuteRange(for: task.kind, detail: task.detail)
     }
 
     /// Tasks with a set length: a Language Transfer track takes as long as the track is.
@@ -217,14 +283,26 @@ private struct PlanBuilder {
     mutating func planSingleTask() {
         let left = remaining
         guard left > 0 else { return }
+        func shortest(_ option: Option) -> Int {
+            switch option {
+            case .kind(let kind): fixedMinutes(for: kind) ?? learner.minuteRange(for: kind).min
+            case .custom(let source): source.minuteRange.min
+            }
+        }
+        func longest(_ option: Option) -> Int {
+            switch option {
+            case .kind(let kind): fixedMinutes(for: kind) ?? learner.minuteRange(for: kind).max
+            case .custom(let source): source.minuteRange.max
+            }
+        }
         for strand in Strand.allCases.filter({ (learner.strandTargets[$0] ?? 0) > 0 }).sorted(by: { deficit($0) > deficit($1) }) {
-            let fitting = candidates(for: strand).filter { kind in
-                (fixedMinutes(for: kind) ?? learner.minuteRange(for: kind).min) <= left && !tasks.contains { $0.kind == kind }
+            let fitting = options(for: strand).filter { shortest($0) <= left }
+            guard let option = fitting.first(where: { longest($0) >= left }) ?? fitting.first else { continue }
+            switch option {
+            case .kind(let kind): add(kind, minutes: fixedMinutes(for: kind) ?? min(left, longest(option)))
+            case .custom(let source): add(source, minutes: min(left, longest(option)))
             }
-            if let kind = fitting.first(where: { (fixedMinutes(for: $0) ?? learner.minuteRange(for: $0).max) >= left }) ?? fitting.first {
-                add(kind, minutes: fixedMinutes(for: kind) ?? min(left, learner.minuteRange(for: kind).max))
-                return
-            }
+            return
         }
     }
 
@@ -236,7 +314,7 @@ private struct PlanBuilder {
             return deficit(left) > deficit(right)
         }
         for index in order where remaining > 0 && fixedMinutes(for: tasks[index].kind) == nil && !tasks[index].kind.isLesson {
-            let headroom = learner.minuteRange(for: tasks[index].kind).max - tasks[index].minutes
+            let headroom = range(of: tasks[index]).max - tasks[index].minutes
             tasks[index].minutes += min(headroom, remaining)
         }
     }
@@ -348,6 +426,10 @@ private struct PlanBuilder {
     private mutating func add(_ kind: TaskKind, minutes: Int) {
         let anchor = isAnchor(kind)
         tasks.append(PlannedTask(kind: kind, minutes: minutes, detail: detail(for: kind), isAnchor: anchor))
+    }
+
+    private mutating func add(_ source: CustomSource, minutes: Int) {
+        tasks.append(PlannedTask(kind: source.kind, minutes: minutes, detail: .custom(source.id), isAnchor: false))
     }
 
     func detail(for kind: TaskKind) -> TaskDetail {

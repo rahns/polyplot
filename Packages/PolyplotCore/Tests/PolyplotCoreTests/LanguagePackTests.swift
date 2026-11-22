@@ -14,6 +14,7 @@ import Testing
             "write.guided", "write.quick", "tandem.text", "tandem.voice", "tandem.call", "fluency.432", "review.mistakes",
             "mission.travel", "other.study", "other.output", "other.fluency",
             "lesson.output", "lesson.input", "lesson.study", "lesson.mixed",
+            "custom.input", "custom.study", "custom.output", "custom.fluency",
         ])
         let progress = SourceProgress(courseLastTrack: 3, courseRepeatPending: true, seriesEpisodesWatched: 2, seriesPartsDone: 1)
         let json = String(decoding: try! JSONEncoder().encode(progress), as: UTF8.self)

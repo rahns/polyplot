@@ -10,9 +10,9 @@ enum LiveActivities {
     static let staleAfter: TimeInterval = 30 * 60
 
     /// Shows the timer for `task` (replacing any other), picking up its elapsed time and pause state.
-    static func start(task: PlannedTaskRecord) {
+    static func start(task: PlannedTaskRecord, title: String) {
         let attributes = PolyplotTimerAttributes(
-            taskTitle: TaskCopy.title(for: task.task),
+            taskTitle: title,
             sourceSymbol: TaskCopy.symbol(for: task.task),
             colorHex: task.task.hex
         )
@@ -99,9 +99,20 @@ enum Reminders {
         return await requestPermission()
     }
 
-    private static var allIDs: [String] {
-        [legacyDailyID] + (0..<dailyDaysAhead).map { "\(dailyPrefix)\($0)" } + (0..<nudgeDaysAhead).map { "\(nudgePrefix)\($0)" }
+    /// Every reminder and nudge Polyplot schedules (older versions numbered them by days ahead; now each
+    /// carries its date, e.g. "polyplot.daily.2026-11-22"), but not the test notification.
+    private static func isReminder(_ id: String) -> Bool {
+        id == legacyDailyID || id.hasPrefix(dailyPrefix) || id.hasPrefix(nudgePrefix)
     }
+
+    /// One identifier per day, so a new reminder never reuses the identifier of one still in Notification Centre.
+    private static func identifier(_ prefix: String, for day: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: day)
+        return prefix + String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// Refreshes run one after another, so a quick second one can't interleave with the first.
+    @MainActor private static var lastRefresh: Task<Void, Never>?
 
     /// Reschedules everything. Called after anything that changes the reminder settings or today's practice.
     /// `freezeNote` says, for a day, whether a freeze will have covered the day before if nothing more is logged.
@@ -112,18 +123,35 @@ enum Reminders {
         let minutesLeft: Int
     }
 
+    /// `practisedToday`: something has been logged today (the plan has started). Then today's reminder isn't sent,
+    /// and any reminder or nudge already in Notification Centre is removed.
     /// `unfinished` (today's plan, started but not finished) turns tonight's nudge into one about finishing it.
+    @MainActor
     static func refresh(for profile: LearnerProfile, practisedToday: Bool, unfinished: UnfinishedPlan? = nil, calendar: Calendar = .current,
                         freezeNote: (Date) -> FreezeNote? = { _ in nil }) {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: allIDs)
-        if practisedToday { clearDelivered() }
-        guard profile.reminderEnabled else { return }
+        let requests = profile.reminderEnabled
+            ? makeRequests(for: profile, practisedToday: practisedToday, unfinished: unfinished, calendar: calendar, freezeNote: freezeNote)
+            : []
+        let previous = lastRefresh
+        lastRefresh = Task {
+            await previous?.value
+            let center = UNUserNotificationCenter.current()
+            // Clear first, then schedule: a delivered reminder is removed before anything new is added.
+            if practisedToday { await removeDelivered(center) }
+            let pending = await center.pendingNotificationRequests().map(\.identifier).filter(isReminder)
+            center.removePendingNotificationRequests(withIdentifiers: pending)
+            for request in requests { try? await center.add(request) }
+        }
+    }
 
+    private static func makeRequests(for profile: LearnerProfile, practisedToday: Bool, unfinished: UnfinishedPlan?, calendar: Calendar,
+                                     freezeNote: (Date) -> FreezeNote?) -> [UNNotificationRequest] {
+        var requests: [UNNotificationRequest] = []
         let now = Date.now
         // Reminders are for the language being learned: its name and its own words.
         let pack = profile.pack
-        for offset in 0..<dailyDaysAhead {
+        // Today's reminder only while nothing has been logged today: once the plan has started, it has done its job.
+        for offset in (practisedToday ? 1 : 0)..<dailyDaysAhead {
             guard let day = calendar.date(byAdding: .day, value: offset, to: now),
                   let fireDate = calendar.date(bySettingHour: profile.reminderHour, minute: profile.reminderMinute, second: 0, of: day),
                   fireDate > now else { continue }
@@ -137,8 +165,8 @@ enum Reminders {
             }
             daily.sound = .default
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
-            center.add(UNNotificationRequest(identifier: "\(dailyPrefix)\(offset)", content: daily,
-                                             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+            requests.append(UNNotificationRequest(identifier: identifier(dailyPrefix, for: fireDate, calendar: calendar), content: daily,
+                                                  trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
         }
 
         // Evening nudges for the coming week. Once something has been logged today, today's is either
@@ -163,19 +191,16 @@ enum Reminders {
             }
             nudge.sound = .default
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
-            center.add(UNNotificationRequest(identifier: "\(nudgePrefix)\(offset)", content: nudge,
-                                             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+            requests.append(UNNotificationRequest(identifier: identifier(nudgePrefix, for: fireDate, calendar: calendar), content: nudge,
+                                                  trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
         }
+        return requests
     }
 
     /// Removes reminders and nudges already shown in Notification Centre, once something has been logged today.
-    static func clearDelivered() {
-        let center = UNUserNotificationCenter.current()
-        center.getDeliveredNotifications { delivered in
-            let ids = delivered.map(\.request.identifier)
-                .filter { $0 == legacyDailyID || $0.hasPrefix(dailyPrefix) || $0.hasPrefix(nudgePrefix) }
-            center.removeDeliveredNotifications(withIdentifiers: ids)
-        }
+    private static func removeDelivered(_ center: UNUserNotificationCenter) async {
+        let ids = await center.deliveredNotifications().map(\.request.identifier).filter(isReminder)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
     }
 
     /// A notification in 5 seconds, to check notifications reach the phone.
@@ -191,8 +216,15 @@ enum Reminders {
         return true
     }
 
+    @MainActor
     static func cancel() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: allIDs)
+        let previous = lastRefresh
+        lastRefresh = Task {
+            await previous?.value
+            let center = UNUserNotificationCenter.current()
+            let pending = await center.pendingNotificationRequests().map(\.identifier).filter(isReminder)
+            center.removePendingNotificationRequests(withIdentifiers: pending)
+        }
     }
 }
 

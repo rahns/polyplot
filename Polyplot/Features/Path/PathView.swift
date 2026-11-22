@@ -839,12 +839,12 @@ struct DaySummarySheet: View {
                 .foregroundStyle(Palette.sun)
             }
             ForEach(planned) { task in
-                row(symbol: TaskCopy.symbol(for: task.task), color: task.task.color, title: TaskCopy.title(for: task.task),
+                row(symbol: TaskCopy.symbol(for: task.task), color: task.task.color, title: model.title(for: task),
                     minutes: model.loggedMinutes(for: task) ?? task.minutesPlanned)
             }
             ForEach(others) { log in
                 row(symbol: log.isBonus ? TaskCopy.otherSymbol(log.task.strand) : TaskCopy.symbol(for: log.task), color: log.task.strand.color,
-                    title: log.isBonus ? "Other: \(TaskCopy.otherName(log.task.strand).lowercased())" : TaskCopy.title(for: log.task), minutes: log.minutes)
+                    title: log.isBonus ? "Other: \(TaskCopy.otherName(log.task.strand).lowercased())" : model.title(for: log), minutes: log.minutes)
             }
         }
         .padding(24)

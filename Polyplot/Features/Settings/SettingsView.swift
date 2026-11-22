@@ -108,10 +108,17 @@ struct SettingsView: View {
                     .labelsHidden()
                 }
             }
+            NavigationLink {
+                CustomSourcesView()
+            } label: {
+                let custom = profile.customSources
+                let on = custom.filter(\.isEnabled).count
+                LabeledContent("Custom sources", value: custom.isEmpty ? "None" : on == custom.count ? "\(on)" : "\(on) of \(custom.count) on")
+            }
         } header: {
             GroupHeading(title: "Settings for \(profile.pack.name) \(profile.pack.flag)", section: "Sources")
         } footer: {
-            Text("Tap a source to see what it is and where to find it.")
+            Text("Tap a source to see what it is and where to find it. Add your own (a podcast, a textbook, another app) in Custom sources.")
         }
         Section {
             NavigationLink {
