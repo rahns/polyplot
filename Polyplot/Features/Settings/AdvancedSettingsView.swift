@@ -10,7 +10,7 @@ struct AdvancedSettingsView: View {
         Form {
             Group {
                 Section {
-                    Label("Make sure you know what you're doing before changing anything here. These settings can change your plans and progress.",
+                    Label("Make sure you know what you're doing before changing anything here.",
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.rounded(.subheadline, weight: .semibold))
                         .foregroundStyle(Palette.ink)
