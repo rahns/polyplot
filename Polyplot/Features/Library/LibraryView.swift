@@ -38,7 +38,7 @@ struct LibraryView: View {
                                 }
                             }
                         }
-                        Text(model.catalogStatus.isEmpty ? "Suggestions list v\(model.catalog.version) · pull down to check for new ones" : model.catalogStatus)
+                        Text("Suggestions list v\(model.catalog.version) · new suggestions arrive with app updates")
                             .font(.rounded(.caption, weight: .semibold))
                             .foregroundStyle(Palette.secondaryText)
                             .frame(maxWidth: .infinity)
@@ -49,8 +49,6 @@ struct LibraryView: View {
             }
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Library")
-            .task { await model.refreshCatalog() }
-            .refreshable { await model.refreshCatalog() }
         }
     }
 

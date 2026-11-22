@@ -50,7 +50,6 @@ import Testing
         // One flag emoji: two regional indicator letters.
         #expect(pack.flag.unicodeScalars.count == 2 && pack.flag.unicodeScalars.allSatisfy { (0x1F1E6...0x1F1FF).contains($0.value) }, "\(pack.code) flag")
         #expect(!pack.phrases.squawks.isEmpty)
-        #expect(URL(string: pack.catalog.remoteURL)?.scheme == "https")
         #expect(Locale.availableIdentifiers.contains(pack.localeIdentifier))
         #expect(LanguagePack.pack(for: pack.code).code == pack.code)
     }

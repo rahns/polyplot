@@ -97,7 +97,6 @@ struct RootView: View {
             if phase == .active {
                 model.save()
                 model.refreshReminders()
-                Task { await model.refreshCatalog() }
                 Task { await model.askForNotificationsIfNeeded() }
             }
         }

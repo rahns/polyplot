@@ -118,10 +118,7 @@ extension LanguagePack {
             writeHere: "Écris ici…",
             squawks: ["Allez\u{00A0}!", "Bravo\u{00A0}!", "Salut\u{00A0}!", "Super\u{00A0}!", "Génial\u{00A0}!", "Courage\u{00A0}!"],
             levelNames: [.a1_1: "Débutant", .a1_2: "Apprenti", .a2_1: "Explorateur", .a2_2: "Voyageur", .b1_1: "Flâneur", .b1_2: "Bavard", .b2_1: "À l'aise", .b2_2: "Habitué"]),
-        catalog: CatalogSource(
-            resource: "content.fr",
-            remoteURL: "https://raw.githubusercontent.com/rahns/polyplot/main/Polyplot/Resources/catalog/content.fr.json",
-            cacheFile: "content-catalog.fr.json"),
+        catalog: CatalogSource(resource: "content.fr"),
         wording: ["region": "France", "regional": "French", "places": "France, Quebec or Belgium",
                   "filmOrigin": "France or Quebec"]
     )

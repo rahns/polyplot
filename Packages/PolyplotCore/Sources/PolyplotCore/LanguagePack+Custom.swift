@@ -69,7 +69,7 @@ extension LanguagePack {
             tutor: Tutor(focus: "grammar, agreement, verb forms and tenses, word order, spelling and word choice",
                          languageToolCode: nil, explainInLanguageFrom: nil, allowsBasicChecker: false),
             phrases: Phrasebook.english,
-            catalog: CatalogSource(resource: "", remoteURL: "", cacheFile: "content-catalog.\(code).json"),
+            catalog: CatalogSource(resource: ""),
             wording: ["region": "a place where \(shown) is spoken", "regional": "local",
                       "places": "a place where \(shown) is spoken", "filmOrigin": "a place where \(shown) is spoken"])
     }

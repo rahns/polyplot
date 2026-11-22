@@ -130,10 +130,7 @@ extension LanguagePack {
             writeHere: "Escribe aquí…",
             squawks: ["¡Vamos!", "¡Olé!", "¡Hola!", "¡Dale!", "¡Qué bien!", "¡Ánimo!"],
             levelNames: [.a1_1: "Novato", .a1_2: "Aprendiz", .a2_1: "Explorador", .a2_2: "Viajero", .b1_1: "Andante", .b1_2: "Conversador", .b2_1: "Fluido", .b2_2: "Local"]),
-        catalog: CatalogSource(
-            resource: "content",
-            remoteURL: "https://raw.githubusercontent.com/rahns/polyplot/main/Polyplot/Resources/catalog/content.json",
-            cacheFile: "content-catalog.json"),
+        catalog: CatalogSource(resource: "content"),
         wording: ["region": "Latin America", "regional": "Latin American", "places": "Mexico, Colombia or Argentina",
                   "filmOrigin": "Latin America or Spain"]
     )

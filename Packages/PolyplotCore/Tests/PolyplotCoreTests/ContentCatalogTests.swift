@@ -51,7 +51,6 @@ import Testing
             #expect(!item.why.isEmpty && !item.whereToFind.isEmpty)
             if let link = item.url { #expect(URL(string: link)?.scheme == "https", "\(item.id)") }
         }
-        #expect(pack.catalog.remoteURL.hasSuffix("/\(pack.catalog.resource).json"))
     }
 }
 

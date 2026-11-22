@@ -4,7 +4,7 @@
 
 > **Languages.** Each language has its own list, named by its pack (`LanguagePack.catalog`): `content.json` for Spanish, described below, and `content.fr.json` for French (25 items; see [09-multi-language.md](09-multi-language.md) §9.7 for how it was chosen and what still needs checking). Both are refreshed from `main` the same way. Prompts are shared by every language, with the language's name and places filled in.
 
-The catalog is a JSON file bundled with the app (`Polyplot/Resources/catalog/content.json`). Each time the Library opens (or is pulled to refresh), Polyplot fetches `https://raw.githubusercontent.com/rahns/polyplot/main/Polyplot/Resources/catalog/content.json`, caches it, and uses it only if its `version` is higher than the bundled one. So suggestions can be updated by editing the file on `main` and bumping `version`, without a new build. Free, no server.
+The catalog is a JSON file bundled with the app (`Polyplot/Resources/catalog/content.json`). One file per language (`content.json` for Spanish, `content.fr.json` for French), loaded by `ContentLibrary.load`. **Suggestions change only with app updates:** nothing is downloaded (the app used to fetch a newer copy from the public GitHub repo, removed ahead of going closed source). The Library's footer reads "Suggestions list v3 · new suggestions arrive with app updates". `version` is still shown there, so bump it when editing a file.
 
 Each item: `id`, `title`, `kind` (`series` / `film` / `podcast` / `youtube`), `from` and `to` bands, `country`, `whereToFind`, optional `url`, `why`. A PolyplotCore test checks that the bundled file decodes, ids are unique and every band has something.
 

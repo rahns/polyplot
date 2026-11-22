@@ -336,19 +336,13 @@ public struct Tutor: Equatable, Sendable {
     }
 }
 
-/// Where the suggested shows and podcasts come from.
+/// Where the suggested shows and podcasts come from: a list bundled with the app, updated with app updates.
 public struct CatalogSource: Equatable, Sendable {
     /// Bundled file name without ".json".
     public let resource: String
-    /// The newest copy, checked when online.
-    public let remoteURL: String
-    /// Cache file name for a downloaded copy.
-    public let cacheFile: String
 
-    public init(resource: String, remoteURL: String, cacheFile: String) {
+    public init(resource: String) {
         self.resource = resource
-        self.remoteURL = remoteURL
-        self.cacheFile = cacheFile
     }
 }
 

@@ -31,7 +31,7 @@ Two things should land **before the first public release**, because they are che
 
 ### Language pack
 
-A type in PolyplotCore, `LanguagePack` (`LanguagePack.swift`), one static value per language (`LanguagePack.spanish` in `LanguagePack+Spanish.swift`), listed in `LanguagePack.all` and looked up by code (`LanguagePack.pack(for: "es")`; an unknown code gives Spanish). Packs are Swift values, not downloaded files, so they are type-checked and unit-tested like the rest of the engine. The one bulky list that already updates over the air (suggested content) stays a JSON file, one per language.
+A type in PolyplotCore, `LanguagePack` (`LanguagePack.swift`), one static value per language (`LanguagePack.spanish` in `LanguagePack+Spanish.swift`), listed in `LanguagePack.all` and looked up by code (`LanguagePack.pack(for: "es")`; an unknown code gives Spanish). Packs are Swift values, not downloaded files, so they are type-checked and unit-tested like the rest of the engine. The one bulky list (suggested content) stays a JSON file, one per language, bundled with the app.
 
 A pack holds:
 
@@ -45,7 +45,7 @@ A pack holds:
 | Phrasebook | The decoration strings | Scattered literals in 10 files |
 | Can-do | The self-assessment statements | `CanDo` |
 | Prompts | Writing, exchange, quick-write, story and travel-mission lists | `Prompts` |
-| Catalog | Bundled file name and remote URL | `ContentLibrary` |
+| Catalog | Bundled file name | `ContentLibrary` |
 
 Can-do statements and prompts are English text about everyday life and are nearly the same for every language. They are shared lists with a `{language}` placeholder ("Order food or a drink entirely in {language}") and place words from the pack (`{region}`, `{regional}`, `{places}`, `{filmOrigin}`: "a festival in Latin America" or "in France"). A pack can add travel missions of its own.
 
@@ -98,7 +98,7 @@ SwiftData models keep the CloudKit rules (defaults on every property, no unique 
 - **Start over** removes the active language's records only; another language's profile, if there is one, becomes active.
 - **Backup.** `BackupFile` version 2: `profiles` (every language), `activeLanguage`, and an optional `language` on each profile, log, writing entry and card. `profile` is still written (the active one). A version 1 file has none of these and would restore as Spanish (plain-JSON backups are no longer accepted at all since the `.polyplot` format, [04-data-model.md](04-data-model.md) §4.3, but the inner format still reads them). Restoring replaces everything, in every language. Field names for source progress are unchanged.
 - **Path history** and the plan balance are on the profile, so they are per language.
-- **Content catalog.** `LanguagePack.catalog` names the bundled file, the remote URL and the cache file. Spanish keeps `content.json` and its URL, so installed builds keep updating; French will add `content.fr.json`.
+- **Content catalog.** `LanguagePack.catalog` names the bundled file: `content.json` for Spanish, `content.fr.json` for French. It changes only with app updates.
 
 ## 9.5 What changed, file by file
 
