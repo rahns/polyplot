@@ -280,20 +280,19 @@ struct SettingsView: View {
         }
         Section {
             Toggle("Keep writing history", isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) }))
-            if profile.keepsWritingHistory {
-                NavigationLink {
-                    WritingHistoryView()
-                } label: {
-                    let count = model.writingHistory.count
-                    LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
-                }
+            // The page is always there, so what's already kept can be read, copied or cleared with the toggle off.
+            NavigationLink {
+                WritingHistoryView()
+            } label: {
+                let count = model.writingHistory.count
+                LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
             }
         } header: {
             Text("Writing history")
         } footer: {
             Text(profile.keepsWritingHistory
                  ? "Every writing task you finish, with its feedback and your hours and level then. It's in your backups."
-                 : "Finished writing isn't kept while this is off. Anything already kept stays until you switch it back on and clear it.")
+                 : "New writing isn't kept while this is off. What's already kept stays, to look back on or clear.")
         }
         Section("Habit") {
             if profile.pack.has(.drillApp) {

@@ -1,5 +1,6 @@
 import PolyplotCore
 import SwiftUI
+import UIKit
 
 /// Settings → Writing history: every finished writing task in the language being learned, most recent
 /// first, with its feedback and the learner's hours and level when it was written. Swipe one to delete it;
@@ -17,7 +18,9 @@ struct WritingHistoryView: View {
                         ContentUnavailableView {
                             Label("No writing yet", systemImage: "doc.text")
                         } description: {
-                            Text("Each writing task you finish is kept here with its feedback, newest first.")
+                            Text(model.profile?.keepsWritingHistory == false
+                                 ? "Keep writing history is off, so new writing isn't kept. Switch it on in Settings to keep each writing task with its feedback."
+                                 : "Each writing task you finish is kept here with its feedback, newest first.")
                         }
                     }
                 } else {
@@ -63,6 +66,8 @@ struct WritingHistoryView: View {
 struct WritingHistoryRow: View {
     let entry: WritingEntry
     let standing: (hours: Double, band: Band, estimated: Bool)
+    /// Which text was just copied, for a moment's "Copied".
+    @State private var copied: String?
 
     private var feedback: CorrectionService.Result? {
         entry.feedbackJSON.flatMap { try? JSONDecoder().decode(CorrectionService.Result.self, from: $0) }
@@ -110,8 +115,36 @@ struct WritingHistoryRow: View {
             if !entry.rewrite.isEmpty {
                 section("Your rewrite", entry.rewrite, Palette.leaf)
             }
+            HStack(spacing: 8) {
+                copyButton("Copy my writing", entry.text)
+                if let native = feedback?.naturalRewrite, !native.isEmpty {
+                    copyButton("Copy native version", native)
+                }
+            }
         }
         .padding(.vertical, 6)
+    }
+
+    /// Puts `text` on the clipboard. Borderless, so in a list only the button reacts, not the whole row.
+    private func copyButton(_ title: String, _ text: String) -> some View {
+        Button {
+            UIPasteboard.general.string = text
+            withAnimation(.snappy) { copied = title }
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                withAnimation(.snappy) { if copied == title { copied = nil } }
+            }
+        } label: {
+            Label(copied == title ? "Copied" : title, systemImage: copied == title ? "checkmark" : "doc.on.doc")
+                .font(.rounded(.caption, weight: .heavy))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Palette.lilac))
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(Palette.ink)
+        .sensoryFeedback(.success, trigger: copied == title)
     }
 
     /// "42.5 training hours · A2.1 Explorer"; "≈" when it was worked out afterwards.
