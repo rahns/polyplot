@@ -16,10 +16,11 @@ extension LanguagePack {
     /// Whether this pack is a language the learner named themselves.
     public var isCustom: Bool { Self.isCustom(code) }
 
-    /// A language Polyplot has no pack for ("Other language"). It has **no built-in sources**: every task comes
-    /// from the learner's own (`CustomSource`), so its plan is made of custom tasks plus the app's own
-    /// extras (mistake review, travel missions). Its wording is English, since Polyplot doesn't know the
-    /// language's words; its level hours are Spanish's, the best-documented roadmap there is.
+    /// A language Polyplot has no pack for ("Other language"). Its only built-in source is Polyplot's own
+    /// writing, checked by AI under the language's name (no basic checker); everything else comes from the
+    /// learner's own sources (`CustomSource`), plus the app's extras (mistake review, travel missions).
+    /// Its wording is English, since Polyplot doesn't know the language's words; its level hours are
+    /// Spanish's, the best-documented roadmap there is.
     /// See docs/09-multi-language.md §9.10.
     public static func custom(code: String, name: String, flag: String) -> LanguagePack {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,14 +32,20 @@ extension LanguagePack {
             flag: flag.isEmpty ? defaultCustomFlag : flag,
             localeIdentifier: "en",
             levels: spanish.levels,
-            sources: [:],
+            sources: [.writing: SourceInfo(
+                name: "Writing",
+                role: "Short writing tasks in Polyplot, checked by AI",
+                symbol: "pencil.and.scribble",
+                what: "Short writing tasks inside Polyplot: guided writing with a prompt, and quick timed writes. Poly checks your \(shown) with AI, using your own Gemini or GroqCloud key, which are both free to get (Settings → Writing feedback). Without a key the writing is still saved, but it isn't checked: Polyplot's basic checker doesn't know \(shown).",
+                whereToFind: "Right here in Polyplot; there's nothing else to install.")],
             course: nil,
             series: nil,
             graded: nil,
             drill: nil,
-            anchors: [:],
+            // Only writing has a weekly target: the other anchors belong to sources this language doesn't have.
+            anchors: spanish.anchors.mapValues { AnchorTargets(writing: $0.writing) },
             tutor: Tutor(focus: "grammar, agreement, verb forms and tenses, word order, spelling and word choice",
-                         languageToolCode: nil, explainInLanguageFrom: nil),
+                         languageToolCode: nil, explainInLanguageFrom: nil, allowsBasicChecker: false),
             phrases: Phrasebook.english,
             catalog: CatalogSource(resource: "", remoteURL: "", cacheFile: "content-catalog.\(code).json"),
             wording: ["region": "a place where \(shown) is spoken", "regional": "local",

@@ -35,12 +35,19 @@ import Testing
         #expect(!LanguagePack.all.contains { $0.code == code }, "never one of the built-in languages")
     }
 
-    @Test func ithasNoBuiltInSources() {
+    @Test func itsOnlyBuiltInSourceIsAICheckedWriting() {
         let pack = LanguagePack.custom(code: "x-test0001", name: "Welsh", flag: "🏴")
-        #expect(pack.roles.isEmpty && pack.course == nil && pack.series == nil && pack.graded == nil && pack.drill == nil)
+        #expect(pack.roles == [.writing] && pack.course == nil && pack.series == nil && pack.graded == nil && pack.drill == nil)
         #expect(pack.phrases == Phrasebook.english)
-        #expect(pack.tutor.languageToolCode == nil)
         #expect(pack.levels == LanguagePack.spanish.levels)
+        // Checked only by AI, told the learner's name for the language; never by the basic checker.
+        #expect(pack.tutor.languageToolCode == nil && !pack.tutor.allowsBasicChecker)
+        #expect(LanguagePack.spanish.tutor.allowsBasicChecker && LanguagePack.french.tutor.allowsBasicChecker)
+        #expect(pack.tutor.instructions(language: pack.name, band: .a2_1, maximumErrors: 5).contains("Welsh tutor"))
+        // Writing keeps its weekly target; the other anchors belong to sources it doesn't have.
+        for band in Band.allCases {
+            #expect(pack.anchorTargets(for: band) == AnchorTargets(writing: LanguagePack.spanish.anchorTargets(for: band).writing))
+        }
     }
 
     @Test func sharedWordingFillsWithItsName() {
@@ -59,7 +66,7 @@ import Testing
         for budget in DayPlanner.budgetChoices {
             let plan = planner.plan(budget: budget, learner: learner, history: [], today: today)
             #expect(!plan.tasks.isEmpty, "\(band.rawValue) \(budget) min")
-            #expect(plan.tasks.allSatisfy { $0.kind.isCustom }, "\(band.rawValue) \(budget) min: \(plan.kinds)")
+            #expect(plan.tasks.allSatisfy { $0.kind.isCustom || $0.kind.source == .writing }, "\(band.rawValue) \(budget) min: \(plan.kinds)")
             #expect(plan.totalMinutes <= budget)
             #expect(plan.totalMinutes >= budget - 5, "\(band.rawValue) \(budget) min planned only \(plan.totalMinutes)")
         }
@@ -68,7 +75,7 @@ import Testing
     @Test func aMissingTypeHasItsShareSpreadOverTheOthers() {
         let pack = LanguagePack.custom(code: "x-test0004", name: "Welsh", flag: "🏴")
         let listeningOnly = [CustomSource(name: "Podcast", strand: .input, minMinutes: 10, maxMinutes: 60)]
-        let learner = LearnerSnapshot(band: .b1_1, customSources: listeningOnly, pack: pack)
+        let learner = LearnerSnapshot(band: .b1_1, enabledSources: [], customSources: listeningOnly, pack: pack)
         #expect(learner.strandTargets[.input] == 1)
         let plan = planner.plan(budget: 30, learner: learner, history: [], today: today)
         #expect(plan.kinds == [.customInput] && plan.totalMinutes == 30)
@@ -81,5 +88,6 @@ import Testing
         sources[1].isEnabled = false
         sources[3].name = " "
         #expect(CustomSource.missingStrands(sources) == [.output, .languageFocused])
+        #expect(CustomSource.missingStrands(sources, covered: [.output]) == [.languageFocused], "Polyplot's writing fills speaking & writing")
     }
 }

@@ -20,8 +20,11 @@ enum CorrectionService {
 
     enum Failure: LocalizedError {
         case nothingAvailable(notice: String?)
+        /// An "Other language" is checked only by AI (`Tutor.allowsBasicChecker`), and none could check it.
+        case aiOnly(String)
 
         var errorDescription: String? {
+            if case .aiOnly(let message) = self { return message }
             let base = "Can't check right now: you're offline and the on-device model isn't available. Your writing is still saved."
             if case .nothingAvailable(let notice?) = self { return "\(notice) \(base)" }
             return base
@@ -48,6 +51,10 @@ enum CorrectionService {
                 failures.append((checker, error))
                 GeminiTrace.log("\(checker.name) couldn't answer: \(error.localizedDescription)")
             }
+        }
+        // A language the basic checker doesn't know ("Other language") is checked by AI or not at all.
+        guard ActiveLanguage.pack.tutor.allowsBasicChecker else {
+            throw Failure.aiOnly(WritingCheckers.aiOnlyMessage(for: failures, language: ActiveLanguage.pack.name))
         }
         let notice = failures.isEmpty ? nil : WritingCheckers.notice(for: failures)
         var result = try await basicCheck(text, band: band, prompt: prompt, notice: notice)
@@ -181,6 +188,25 @@ enum WritingCheckers {
 
     /// "Gemini, then Groq", for the Settings row and Diagnostics.
     static var summary: String { WritingChecker.summary(default: defaultChecker, available: available) }
+
+    /// Why an "Other language"'s writing couldn't be checked, with no basic checker to stand in.
+    static func aiOnlyMessage(for failures: [(WritingChecker, Error)], language: String) -> String {
+        let saved = " Your writing is still saved, and you can finish without a check."
+        guard !failures.isEmpty else {
+            return "Writing feedback for \(language) needs a Gemini or GroqCloud key, both free: Polyplot's basic checker doesn't know \(language). Add one in Settings → Writing feedback." + saved
+        }
+        let names = failures.map(\.0.name).joined(separator: " and ")
+        if let refused = failures.first(where: { if case Gemini.Failure.invalidKey = $0.1 { true } else { false } }) {
+            return "\(refused.0.name) didn't accept your API key. Check it in Settings → Writing feedback." + saved
+        }
+        if failures.allSatisfy({ if case Gemini.Failure.rateLimited = $0.1 { true } else { false } }) {
+            return "\(names) \(failures.count > 1 ? "are" : "is") at the free limit for now. It resets daily." + saved
+        }
+        if failures.contains(where: { ($0.1 as? URLError)?.code == .notConnectedToInternet }) {
+            return "You're offline. Writing feedback for \(language) needs the internet." + saved
+        }
+        return "\(names) couldn't answer right now (busy or unavailable). Try checking again in a minute." + saved
+    }
 
     /// The warning above the basic checker's feedback, when every checker that was set up failed.
     static func notice(for failures: [(WritingChecker, Error)]) -> String {

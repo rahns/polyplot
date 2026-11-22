@@ -90,7 +90,7 @@ struct SettingsView: View {
             Text("Language")
         } footer: {
             Text(profile.pack.isCustom
-                 ? "Each language keeps its own level, plan, goal and streak. \(profile.pack.name) has no built-in sources: its plan comes from your custom sources below."
+                 ? "Each language keeps its own level, plan, goal and streak. \(profile.pack.name)'s only built-in source is Polyplot's writing: the rest of its plan comes from your custom sources below."
                  : "Each language keeps its own level, plan, goal and streak. For any other language, choose Other language and add your own sources.")
         }
         // Settings for the language being learned: each language has its own.
@@ -140,7 +140,7 @@ struct SettingsView: View {
             GroupHeading(title: "Settings for \(profile.pack.name) \(profile.pack.flag)", section: "Sources")
         } footer: {
             Text(profile.pack.isCustom
-                 ? "\(profile.pack.name)'s plan is made from your custom sources: add at least one for listening, speaking & writing, fluency practice and grammar & vocab."
+                 ? "\(profile.pack.name)'s plan is made from your custom sources, plus Polyplot's writing (checked by AI). Add at least one for listening, speaking & writing, fluency practice and grammar & vocab."
                  : "Tap a source to see what it is and where to find it. Add your own (a podcast, a textbook, another app) in Custom sources.")
         }
         Section {
@@ -210,7 +210,7 @@ struct SettingsView: View {
         }
 
         // One row per source the language has, each in that source's own terms (none for an "Other language").
-        if !profile.pack.roles.isEmpty {
+        if profile.pack.graded != nil || profile.pack.course != nil || profile.pack.drill != nil || profile.pack.series != nil {
         Section("Progress") {
             let pack = profile.pack
             if let graded = pack.graded {
@@ -360,7 +360,7 @@ struct SettingsView: View {
         } header: {
             GroupHeading(title: "Settings across all languages", section: "Writing feedback")
         } footer: {
-            Text("Poly checks your writing with Gemini and/or GroqCloud, both free with your own keys: your default first, then the other. Without either, a basic checker is used.")
+            Text("Poly checks your writing with Gemini and/or GroqCloud, both free with your own keys: your default first, then the other. Without either, a basic checker is used" + (profile.pack.isCustom ? ", except for \(profile.pack.name), which it doesn't know: that needs a key." : "."))
         }
         Section {
             Picker("Theme", selection: $appearance) {

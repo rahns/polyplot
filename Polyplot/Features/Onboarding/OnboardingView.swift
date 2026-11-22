@@ -97,9 +97,15 @@ struct OnboardingView: View {
         }
     }
 
+    /// An "Other language"'s study types with nothing to plan: no source of the learner's, and for speaking &
+    /// writing, Polyplot's own writing switched off too.
+    private var missingTypes: [Strand] {
+        CustomSource.missingStrands(draft.customSources, covered: draft.sources.contains(.writing) ? [.output] : [])
+    }
+
     /// "No source for fluency practice or grammar & vocab".
     private var missingTypesTitle: String {
-        let names = CustomSource.missingStrands(draft.customSources).map { $0.label.lowercased() }
+        let names = missingTypes.map { $0.label.lowercased() }
         guard let last = names.last else { return "" }
         let list = names.count > 1 ? names.dropLast().joined(separator: ", ") + " or " + last : last
         return "No source for \(list)"
@@ -161,7 +167,7 @@ struct OnboardingView: View {
             draft.canDoAnswers = [:]
         }
         // An "Other language" can go on without a source of every type, but is warned first.
-        if step == .sources, draft.isCustomLanguage, !CustomSource.missingStrands(draft.customSources).isEmpty {
+        if step == .sources, draft.isCustomLanguage, !missingTypes.isEmpty {
             confirmingMissingTypes = true
             return
         }
@@ -172,8 +178,6 @@ struct OnboardingView: View {
     /// skips the writing-feedback step when one is already set up.
     private var skipsFeedback: Bool {
         addingLanguage && (GeminiKey.current != nil || GroqKey.current != nil)
-            // An "Other language" has no built-in writing tasks to check.
-            || draft.isCustomLanguage
     }
 
     /// The next or previous step, passing over the ones this setup skips.
@@ -349,6 +353,7 @@ struct OnboardingView: View {
 
     private func customTypeCard(_ strand: Strand) -> some View {
         let added = draft.customSources.filter { $0.strand == strand }
+        let writingOn = draft.sources.contains(.writing)
         return RaisedCard(accent: strand.color) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
@@ -395,7 +400,34 @@ struct OnboardingView: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
                 }
-                if added.isEmpty {
+                // Speaking & writing also has Polyplot's own writing, checked by AI.
+                if strand == .output {
+                    Button {
+                        if writingOn { draft.sources.remove(.writing) } else { draft.sources.insert(.writing) }
+                    } label: {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Polyplot's writing tasks")
+                                    .font(.rounded(.body, weight: .bold))
+                                    .foregroundStyle(Palette.ink)
+                                Text("Guided writing in \(draft.pack.name), checked by AI with your own free key")
+                                    .font(.rounded(.caption, weight: .medium))
+                                    .foregroundStyle(Palette.secondaryText)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: writingOn ? "checkmark.circle.fill" : "circle")
+                                .font(.title2)
+                                .foregroundStyle(writingOn ? Palette.leaf : Palette.secondaryText)
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(writingOn ? "Using Polyplot's writing tasks" : "Not using Polyplot's writing tasks")
+                    .sensoryFeedback(.selection, trigger: writingOn)
+                }
+                if added.isEmpty && !(strand == .output && writingOn) {
                     Label("No source yet. Without one, this part of learning is left out of your plan.", systemImage: "exclamationmark.triangle.fill")
                         .font(.rounded(.caption, weight: .semibold))
                         .foregroundStyle(Palette.coral)
@@ -448,7 +480,7 @@ struct OnboardingView: View {
                         BalanceBar(balance: draft.ownBalance, order: order)
                         ForEach(order, id: \.self) { strand in
                             StrandSliderRow(strand: strand, percent: draft.ownBalance[strand], enabled: true,
-                                            warning: CustomSource.missingStrands(draft.customSources).contains(strand) && draft.ownBalance[strand] > 0
+                                            warning: missingTypes.contains(strand) && draft.ownBalance[strand] > 0
                                                 ? "You have no source for this yet, so its share goes to the others until you add one."
                                                 : nil) { value in
                                 draft.ownBalance.set(strand, to: value)
@@ -696,8 +728,10 @@ struct OnboardingView: View {
 
     private var feedback: some View {
         VStack(alignment: .leading, spacing: 18) {
-            StepTitle("Better writing feedback")
-            Text("Poly can check your writing with Google's Gemini, for free, using your own API key. It catches more than the basic checker and explains each mistake. You can also do this later in Settings.")
+            StepTitle(draft.isCustomLanguage ? "Writing feedback" : "Better writing feedback")
+            Text(draft.isCustomLanguage
+                 ? "Poly checks your \(draft.pack.name) writing with AI: Google's Gemini, for free, using your own API key. It finds your mistakes and explains each one. Polyplot's basic checker doesn't know \(draft.pack.name), so without a key your writing is saved but not checked. You can also do this later in Settings."
+                 : "Poly can check your writing with Google's Gemini, for free, using your own API key. It catches more than the basic checker and explains each mistake. You can also do this later in Settings.")
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.secondaryText)
             GeminiKeySetup(key: $draft.geminiKey)

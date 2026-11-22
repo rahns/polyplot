@@ -44,8 +44,9 @@ public struct CustomSource: Codable, Equatable, Hashable, Sendable, Identifiable
     public static let setupOrder: [Strand] = [.input, .output, .fluency, .languageFocused]
 
     /// The study types (in `setupOrder`) with no switched-on, named source: an "Other language" plan
-    /// has nothing to put there.
-    public static func missingStrands(_ sources: [CustomSource]) -> [Strand] {
-        setupOrder.filter { strand in !sources.contains { $0.isActive && $0.strand == strand } }
+    /// has nothing to put there. `covered` are types something built in already fills (speaking & writing,
+    /// with Polyplot's writing switched on).
+    public static func missingStrands(_ sources: [CustomSource], covered: Set<Strand> = []) -> [Strand] {
+        setupOrder.filter { strand in !covered.contains(strand) && !sources.contains { $0.isActive && $0.strand == strand } }
     }
 }

@@ -315,11 +315,15 @@ public struct Tutor: Equatable, Sendable {
     public let languageToolCode: String?
     /// From this level, explanations are in the language itself; below it, in English.
     public let explainInLanguageFrom: Band?
+    /// Whether the basic checker (LanguageTool and the on-device model) may check this language when no AI
+    /// checker can. Off for an "Other language": they don't know it, so only Gemini or GroqCloud check it.
+    public let allowsBasicChecker: Bool
 
-    public init(focus: String, languageToolCode: String?, explainInLanguageFrom: Band?) {
+    public init(focus: String, languageToolCode: String?, explainInLanguageFrom: Band?, allowsBasicChecker: Bool = true) {
         self.focus = focus
         self.languageToolCode = languageToolCode
         self.explainInLanguageFrom = explainInLanguageFrom
+        self.allowsBasicChecker = allowsBasicChecker
     }
 
     /// The checker's instructions for a learner at `band`.
