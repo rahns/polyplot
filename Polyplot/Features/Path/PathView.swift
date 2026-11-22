@@ -539,7 +539,6 @@ struct PathNodeView: View {
     var date: Date?
     var minutes = 0
 
-    @State private var pulse = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let edge: CGFloat = 6
@@ -587,22 +586,34 @@ struct PathNodeView: View {
                     .stroke(Palette.sun, lineWidth: 6)
                     .frame(width: size + 20, height: size + 20)
                     .offset(y: Self.edge / 2)
-                ForEach(0..<6, id: \.self) { index in
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(Palette.sun)
-                        .offset(y: -(size / 2 + 22))
-                        .rotationEffect(.degrees(Double(index) * 60 + (pulse ? 15 : 0)))
-                        .offset(y: Self.edge / 2)
+                // The sparkles sway for as long as they're on screen, whatever happened before (a language
+                // switch can reuse this view), so the motion never gets stuck.
+                ZStack {
+                    ForEach(0..<6, id: \.self) { index in
+                        Image(systemName: "sparkle")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(Palette.sun)
+                            .offset(y: -(size / 2 + 22))
+                            .rotationEffect(.degrees(Double(index) * 60))
+                    }
                 }
+                .phaseAnimator(reduceMotion ? [false] : [false, true]) { sparkles, phase in
+                    sparkles.rotationEffect(.degrees(phase ? 15 : 0))
+                } animation: { _ in .easeInOut(duration: 1.1) }
+                .offset(y: Self.edge / 2)
             } else if pulses {
                 // Centred on face + edge together, so the ring sits evenly around the whole node.
+                // It pulses for as long as it's on screen (not started once on appear), so it keeps going
+                // after a language switch or a change of status.
                 Circle()
                     .stroke(color.opacity(0.35), lineWidth: 6)
                     .frame(width: size + 22, height: size + 22)
                     .offset(y: Self.edge / 2)
-                    .scaleEffect(pulse ? 1.08 : 0.96)
-                    .opacity(pulse ? 0.3 : 0.9)
+                    .phaseAnimator(reduceMotion ? [false] : [false, true]) { ring, phase in
+                        ring
+                            .scaleEffect(phase ? 1.08 : 0.96)
+                            .opacity(phase ? 0.3 : 0.9)
+                    } animation: { _ in .easeInOut(duration: 1.1) }
             }
             Image(systemName: symbol)
                 .font(.system(size: size * (finishedToday ? 0.44 : 0.36), weight: .black))
@@ -613,10 +624,6 @@ struct PathNodeView: View {
         }
         .padding(.bottom, Self.edge)
         .opacity(status == .upcoming ? 0.55 : status == .beforeStart ? 0.35 : 1)
-        .onAppear {
-            guard !reduceMotion, pulses || finishedToday else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { pulse = true }
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }
