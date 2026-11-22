@@ -254,7 +254,7 @@ Implemented in `Reminders` (`Polyplot/Services/Platform.swift`), rescheduled aft
 - **Evening nudge** at 8 pm on days with nothing logged ("Poly's still awake 🌙 Nothing logged today yet. Even one quick lesson keeps your streak going."). Scheduled for the coming week. Once something is logged today, today's nudge becomes one about finishing the plan if it has been started but not finished ("So close 🌙 You've done 20 min today. Two tasks (about 25 min) and today's plan is finished."; tasks left are the plan's planned or started ones, skipped ones don't count), and is dropped if the plan is finished or there isn't one. Not sent if the daily reminder is itself set for 8 pm or later.
 - **Cleared once you practise:** as soon as anything is logged today (the plan has started; or the app opens on a day with practice), Polyplot removes its reminders and nudges already sitting in Notification Centre, and today's daily reminder, if it hasn't gone off yet, isn't sent. The test notification is left alone. Each reminder's identifier carries its day (`polyplot.daily.2026-11-22`), so a new one never shares an identifier with one still in Notification Centre, and each refresh clears delivered ones before scheduling (refreshes run one after another).
 - Notifications also appear while Polyplot is open (a notification-centre delegate allows banners in the foreground).
-- Settings → Habit → **Send a test notification** sends one after 5 seconds, or explains how to turn notifications on if they're off.
+- Settings → Advanced → Diagnostics → Notifications → **Send a test notification** sends one after 5 seconds, or explains how to turn notifications on if they're off.
 - No marketing-style notifications.
 
 ## 3.8 App icon
