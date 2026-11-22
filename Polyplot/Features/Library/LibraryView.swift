@@ -22,7 +22,7 @@ struct LibraryView: View {
                         section("For your level", subtitle: "\(ActiveLanguage.levelName(profile.band)) · \(profile.band.rawValue)") {
                             let others = suggestions.now.filter { $0.id != model.currentContent?.id }
                             if others.isEmpty {
-                                Text("That's everything for your level right now. New suggestions arrive with app updates and when you level up.")
+                                Text("That's everything for your level right now. There's more to discover as you level up.")
                                     .font(.rounded(.subheadline, weight: .medium))
                                     .foregroundStyle(Palette.secondaryText)
                             }
@@ -38,11 +38,6 @@ struct LibraryView: View {
                                 }
                             }
                         }
-                        Text("Suggestions list v\(model.catalog.version) · new suggestions arrive with app updates")
-                            .font(.rounded(.caption, weight: .semibold))
-                            .foregroundStyle(Palette.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 8)
                     }
                     .padding(20)
                 }

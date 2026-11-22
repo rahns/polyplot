@@ -22,6 +22,9 @@ Native iOS app (SwiftUI, iOS 27+) that turns a language learner's sources into o
 - Stored identifiers (`TaskKind` and `SourceKind` raw values, profile column names, backup field names) date from when Spanish was the only language. Never change them; a test pins them.
 - Every stored record has a `languageCode`; new records go through `AppModel.insert`.
 
+## Writing in the app
+- Every word on screen (titles, footers, subtitles, notes, alerts) is for the learner: a non-technical person. Say what something does for them in plain words; never mention how the app works inside (versions, downloads, caches, backups' format, models, file names) unless they need it to act.
+
 ## Conventions
 - App targets use Swift 5 language mode for now; PolyplotCore uses Swift 6.
 - Every planner rule from `docs/02-learning-engine.md` gets a unit test in PolyplotCore.
