@@ -1,9 +1,9 @@
 import PolyplotCore
 import SwiftUI
 
-/// Settings → Plan balance (shown once "Custom plan balance" is on): the learner's own split of the day's
-/// practice between listening, speaking & writing, grammar & vocab and fluency, one slider per strand.
-/// Moving one scales the others so it always adds up to 100%. See docs/03-experience.md "Settings".
+/// Settings → Plan balance: Polyplot's split for the learner's level, or (with "Use my own balance" on) the
+/// learner's own split of the day's practice between listening, speaking & writing, grammar & vocab and
+/// fluency, one slider per strand. Moving one scales the others so it always adds up to 100%. See docs/03-experience.md "Settings".
 struct PlanBalanceView: View {
     @Environment(AppModel.self) private var model
     /// The split being edited, saved when a slider is let go (so today's plan isn't rebuilt on every step).
@@ -34,6 +34,29 @@ struct PlanBalanceView: View {
         let balance = draft ?? profile.strandBalance ?? standard
         let learner = model.snapshot(for: profile)
         let blocked = Self.order.filter { !learner.canPlan($0) }
+        let custom = profile.strandBalance != nil
+        Section {
+            Toggle("Use my own balance", isOn: Binding(get: { profile.strandBalance != nil }, set: { on in
+                profile.strandBalance = on ? StrandBalance(band: profile.band) : nil
+                draft = profile.strandBalance ?? standard
+                model.save()
+                model.replanTodayIfNotStarted()
+            }))
+        } footer: {
+            Text(custom
+                 ? "Your own split, the same at every level. Switch off to go back to Polyplot's."
+                 : "Polyplot splits each day by your level, shifting as you level up. Switch on to set your own split.")
+        }
+        if !custom {
+            Section("Polyplot's balance for \(profile.band.rawValue)") {
+                BalanceBar(balance: standard, order: Self.order)
+                    .padding(.vertical, 4)
+                Text(Self.order.map { "\($0.label) \(standard[$0])%" }.joined(separator: " · "))
+                    .font(.rounded(.subheadline, weight: .medium))
+                    .foregroundStyle(Palette.secondaryText)
+            }
+        }
+        if custom {
         Section {
             BalanceBar(balance: balance, order: Self.order)
                 .padding(.vertical, 4)
@@ -64,10 +87,13 @@ struct PlanBalanceView: View {
             }
             .disabled(balance == standard)
         }
+        }
 
         Section("About the balance") {
             explanation("What this does", "Each day's plan picks its cards and minutes so your practice over the past week moves toward this split. Classes/tutoring, the daily warm-up, the mistake review and travel missions are planned as usual and count toward it.")
-            explanation("The default for your level (\(profile.band.rawValue))", Self.order.map { "\($0.label) \(standard[$0])%" }.joined(separator: " · "))
+            if custom {
+                explanation("The default for your level (\(profile.band.rawValue))", Self.order.map { "\($0.label) \(standard[$0])%" }.joined(separator: " · "))
+            }
             explanation("Why it's recommended", "It follows research on the four strands of language learning. Understanding lots of \(profile.pack.name) is what moves your level most, so listening stays at about half your time. Grammar & vocab gives you a head start early on and shrinks as the courses finish; speaking & writing grows as you level up; a little fluency practice makes what you already know quicker. The default shifts by itself as your level changes, while a custom balance stays as you set it. Listening below about 40% tends to slow progress.")
         }
     }

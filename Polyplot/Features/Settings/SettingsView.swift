@@ -13,7 +13,6 @@ struct SettingsView: View {
     @State private var importing = false
     @State private var pendingRestore: Data?
     @State private var message: String?
-    @State private var sourceInfo: SourceKind?
     /// "Gemini, then Groq", "Groq" or "Not set up".
     @State private var checkers = SettingsView.checkersText()
 
@@ -44,7 +43,6 @@ struct SettingsView: View {
                 }
                 .ignoresSafeArea()
             }
-            .sheet(item: $sourceInfo) { SourceInfoSheet(source: $0) }
             .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) {}
             }
@@ -89,105 +87,33 @@ struct SettingsView: View {
         } header: {
             Text("Language")
         } footer: {
-            Text(profile.pack.isCustom
-                 ? "Each language keeps its own level, plan, goal and streak. \(profile.pack.name)'s only built-in source is Polyplot's writing: the rest of its plan comes from your custom sources below."
-                 : "Each language keeps its own level, plan, goal and streak. For any other language, choose Other language and add your own sources.")
+            Text("Each language keeps its own level, plan, goal and streak. For a language Polyplot doesn't have, choose Other language…")
         }
-        // Settings for the language being learned: each language has its own.
-        Section {
-            ForEach(profile.pack.roles, id: \.self) { source in
-                HStack {
-                    // The name opens what the source is; the switch turns it on or off.
-                    Button {
-                        sourceInfo = source
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(SourceCopy.name(source)).foregroundStyle(Palette.ink)
-                                Image(systemName: "info.circle")
-                                    .font(.rounded(.caption, weight: .bold))
-                                    .foregroundStyle(Palette.secondaryText)
-                            }
-                            // A source the learner's level leaves out for now: "Starts at A2.1".
-                            if let note = profile.pack.levelNote(for: source, at: profile.band) {
-                                Text(note)
-                                    .font(.rounded(.caption, weight: .medium))
-                                    .foregroundStyle(Palette.secondaryText)
-                            }
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    Spacer()
-                    Toggle(SourceCopy.name(source), isOn: binding(
-                        get: { profile.enabledSources.contains(source) },
-                        set: { on in
-                            var sources = profile.enabledSources
-                            if on { sources.insert(source) } else { sources.remove(source) }
-                            profile.enabledSources = sources
-                        }
-                    ))
-                    .labelsHidden()
-                }
-            }
-            NavigationLink {
-                CustomSourcesView()
-            } label: {
-                let custom = profile.customSources
-                let on = custom.filter(\.isEnabled).count
-                LabeledContent("Custom sources", value: custom.isEmpty ? "None" : on == custom.count ? "\(on)" : "\(on) of \(custom.count) on")
-            }
-        } header: {
-            GroupHeading(title: "Settings for \(profile.pack.name) \(profile.pack.flag)", section: "Sources")
-        } footer: {
-            Text(profile.pack.isCustom
-                 ? "\(profile.pack.name)'s plan is made from your custom sources, plus Polyplot's writing (checked by AI). Add at least one for listening, speaking & writing, fluency practice and grammar & vocab."
-                 : "Tap a source to see what it is and where to find it. Add your own (a podcast, a textbook, another app) in Custom sources.")
-        }
+        // The language being learned: what each day's plan is built from.
         Section {
             NavigationLink {
                 GoalSettingsView()
             } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(profile.targetDate.map { "\(profile.goal) by \($0.formatted(.dateTime.month(.abbreviated).year()))" } ?? profile.goal)
-                        .font(.rounded(.body, weight: .bold))
-                    Text("\(profile.weeklyGoalMinutes) min a week")
-                        .font(.rounded(.subheadline, weight: .medium))
-                        .foregroundStyle(Palette.secondaryText)
-                }
+                LabeledContent("Goal", value: profile.targetDate.map { "\(profile.goal) by \($0.formatted(.dateTime.month(.abbreviated).year()))" } ?? profile.goal)
             }
-        } header: {
-            Text("Goal")
-        } footer: {
-            Text("Your level goal, weekly minutes and target date. Change the weekly goal and the date follows, or the other way round.")
-        }
-
-        Section {
+            NavigationLink {
+                SourcesSettingsView()
+            } label: {
+                LabeledContent("Sources", value: sourcesSummary(profile))
+            }
             NavigationLink {
                 LessonSettingsView()
             } label: {
                 LabeledContent("Classes/Tutoring", value: profile.lessonSchedule.summary(weekStartsOnSunday: profile.weekStartsOnSunday))
             }
-        } header: {
-            Text("Classes/Tutoring")
-        } footer: {
-            Text("A tutor or a class on set days: it's always in that day's plan, at its usual length.")
-        }
-        Section {
-            Toggle("Custom plan balance", isOn: binding(
-                get: { profile.strandBalance != nil },
-                set: { on in
-                    profile.strandBalance = on ? StrandBalance(band: profile.band) : nil
-                    model.replanTodayIfNotStarted()
-                }
-            ))
-            if let balance = profile.strandBalance {
-                NavigationLink {
-                    PlanBalanceView()
-                } label: {
-                    HStack(spacing: 10) {
-                        Text("Plan balance")
-                        Spacer()
-                        // The split at a glance, each share in its strand's colour.
+            NavigationLink {
+                PlanBalanceView()
+            } label: {
+                HStack(spacing: 10) {
+                    Text("Plan balance")
+                    Spacer()
+                    if let balance = profile.strandBalance {
+                        // A custom split at a glance, each share in its strand's colour.
                         HStack(spacing: 6) {
                             ForEach([Strand.input, .languageFocused, .output, .fluency], id: \.self) { strand in
                                 Text("\(balance[strand])")
@@ -196,97 +122,53 @@ struct SettingsView: View {
                                     .monospacedDigit()
                             }
                         }
+                    } else {
+                        Text("For your level").foregroundStyle(Palette.secondaryText)
                     }
                 }
             }
-        } footer: {
-            Text(profile.strandBalance == nil
-                 ? "Polyplot splits each day between listening, grammar & vocab, speaking & writing and fluency by your level. Switch this on to set your own split."
-                 : "Your own split between listening, grammar & vocab, speaking & writing and fluency (%).")
-        }
-        Section {
-            Toggle("Travel mode", isOn: Binding(get: { profile.travelMode }, set: { model.setTravelMode($0) }))
-        } footer: {
-            Text("Adds a real-world \(profile.pack.name) mission to every day's plan." + (model.canChangeBudget ? "" : " Today's plan has started, so this applies from tomorrow."))
-        }
-
-        // One row per source the language has, each in that source's own terms (none for an "Other language").
-        if profile.pack.graded != nil || profile.pack.course != nil || profile.pack.drill != nil || profile.pack.series != nil {
-        Section("Progress") {
-            let pack = profile.pack
-            if let graded = pack.graded {
-                // A window (e.g. 40–45) that slides by 1 per tap.
-                Stepper("\(SourceCopy.name(.gradedVideo)): \(profile.dsDifficultyLow)–\(profile.dsDifficultyHigh)", value: binding(
-                    get: { profile.dsDifficultyLow },
-                    set: { low in
-                        let low = max(graded.scale.lowerBound, low)
-                        profile.dsDifficulty = low...(low + graded.windowWidth)
-                    }
-                ), in: graded.scale.lowerBound...(graded.scale.upperBound - graded.windowWidth))
-            }
-            if let course = pack.course {
-                // The last track finished, like the series' "seen": finishing 13 means you're up to 14.
-                Stepper(profile.languageTransferLastTrack == 0
-                        ? "\(SourceCopy.name(.audioCourse)): not started"
-                        : "\(SourceCopy.name(.audioCourse)): finished Track \(profile.languageTransferLastTrack)", value: binding(
-                    get: { profile.languageTransferLastTrack },
-                    set: { profile.languageTransferLastTrack = $0; profile.languageTransferRepeatPending = false }
-                ), in: 0...course.tracks)
-            }
-            if let drill = pack.drill {
-                // Section and unit as two full steppers in one row, so they read as one entry.
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(SourceCopy.name(.drillApp))
-                    Stepper(value: binding(get: { profile.duolingoSection }, set: { profile.duolingoSection = $0 }), in: drill.sections) {
-                        Text("Section \(profile.duolingoSection)").foregroundStyle(Palette.secondaryText)
-                    }
-                    Stepper(value: binding(get: { profile.duolingoUnit }, set: { profile.duolingoUnit = $0 }), in: drill.units) {
-                        Text("Unit \(profile.duolingoUnit)").foregroundStyle(Palette.secondaryText)
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            if let series = pack.series {
-                // One step = one part (an episode is watched in parts at the early levels), so a half-watched episode can be set.
-                Stepper(seriesProgressLabel(profile, series), value: binding(
-                    get: { profile.extraEpisodesWatched * series.intensiveParts + profile.extraPartsDoneInEpisode },
-                    set: { parts in
-                        profile.extraEpisodesWatched = parts / series.intensiveParts
-                        profile.extraPartsDoneInEpisode = parts % series.intensiveParts
-                    }
-                ), in: 0...(series.episodes * series.intensiveParts))
-            }
-            if let drill = pack.drill, profile.band == drill.optionalBand {
-                Toggle("Keep a \(SourceCopy.name(.drillApp)) warm-up", isOn: binding(get: { profile.keepDuolingoInB2 }, set: { profile.keepDuolingoInB2 = $0 }))
-            }
-        }
-        }
-        // Speaking stages pace the exchange partner, which an "Other language" doesn't have.
-        if profile.pack.has(.exchange) {
-        Section {
-            Toggle("I'm ready for voice notes", isOn: binding(
-                get: { profile.speakingStage >= .voiceNotes },
-                set: { model.setSpeakingStage(.voiceNotes, on: $0) }
-            ))
-            Toggle("I'm ready for live calls", isOn: binding(
-                get: { profile.speakingStage >= .calls },
-                set: { model.setSpeakingStage(.calls, on: $0) }
-            ))
-            .disabled(profile.speakingStage < .voiceNotes)
         } header: {
-            Text("Speaking")
+            GroupHeading(title: "\(profile.pack.name) \(profile.pack.flag)", section: "Your plan")
         } footer: {
-            Text("Polyplot switches these on by itself as your hours and \(profile.pack.sources[.exchange]?.shortName ?? "partner") exchanges grow, and you can go early if you feel ready. Switch one off and it stays off until you switch it back on.")
-        }
+            Text("\(profile.weeklyGoalMinutes) min a week. Each language has its own goal, sources and plan.")
         }
         Section {
-            Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Keep writing history")
-                    Text("Writing snippets can still appear in the mistake deck when this is off")
-                        .font(.rounded(.caption, weight: .medium))
-                        .foregroundStyle(Palette.secondaryText)
+            Toggle(isOn: Binding(get: { profile.travelMode }, set: { model.setTravelMode($0) })) {
+                subtitled("Travel mode", "A real-world \(profile.pack.name) mission every day"
+                          + (model.canChangeBudget ? "" : ", from tomorrow"))
+            }
+            if profile.pack.has(.drillApp) {
+                Toggle(isOn: binding(get: { profile.alwaysIncludeDuolingo }, set: { profile.alwaysIncludeDuolingo = $0; model.replanTodayIfNotStarted() })) {
+                    subtitled("Always include \(SourceCopy.name(.drillApp))", "If you're keeping a streak going")
                 }
+            }
+            // Speaking stages pace the exchange partner, which an "Other language" doesn't have.
+            if profile.pack.has(.exchange) {
+                Toggle("Ready for voice notes", isOn: binding(
+                    get: { profile.speakingStage >= .voiceNotes },
+                    set: { model.setSpeakingStage(.voiceNotes, on: $0) }
+                ))
+                Toggle("Ready for live calls", isOn: binding(
+                    get: { profile.speakingStage >= .calls },
+                    set: { model.setSpeakingStage(.calls, on: $0) }
+                ))
+                .disabled(profile.speakingStage < .voiceNotes)
+            }
+        } header: {
+            Text("Practice")
+        } footer: {
+            if profile.pack.has(.exchange) {
+                Text("Voice notes and calls switch on by themselves as you progress; switch one on early if you feel ready. Switched off, it stays off.")
+            }
+        }
+        Section {
+            NavigationLink {
+                GeminiSettingsView { _ in checkers = SettingsView.checkersText() }
+            } label: {
+                LabeledContent("Writing feedback", value: checkers)
+            }
+            Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
+                subtitled("Keep writing history", "Writing snippets can still appear in the mistake deck when this is off")
             }
             // The page is always there, so what's already kept can be read, copied or cleared with the toggle off.
             NavigationLink {
@@ -296,30 +178,12 @@ struct SettingsView: View {
                 LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
             }
         } header: {
-            Text("Writing history")
+            Text("Writing")
         } footer: {
-            Text(profile.keepsWritingHistory
-                 ? "Every writing task you finish, with its feedback and your hours and level then. It's in your backups."
-                 : "New writing isn't kept while this is off. What's already kept stays, to look back on or clear.")
+            Text("Poly checks writing with your own free Gemini or GroqCloud key, shared by all your languages"
+                 + (profile.pack.isCustom ? ". \(profile.pack.name) needs one: the basic checker doesn't know it." : "; without one, a basic checker is used."))
         }
-        Section("Habit") {
-            if profile.pack.has(.drillApp) {
-                Toggle(isOn: binding(get: { profile.alwaysIncludeDuolingo }, set: { profile.alwaysIncludeDuolingo = $0; model.replanTodayIfNotStarted() })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Always include \(SourceCopy.name(.drillApp))")
-                        Text("If you're keeping a streak going")
-                            .font(.rounded(.caption, weight: .medium))
-                            .foregroundStyle(Palette.secondaryText)
-                    }
-                }
-            }
-            Picker("Week starts on", selection: Binding(
-                get: { profile.weekStartsOnSunday },
-                set: { model.setWeekStartsOnSunday($0) }
-            )) {
-                Text("Monday").tag(false)
-                Text("Sunday").tag(true)
-            }
+        Section {
             Toggle("Daily reminder", isOn: binding(
                 get: { profile.reminderEnabled },
                 set: { on in
@@ -340,6 +204,13 @@ struct SettingsView: View {
                     }
                 ), displayedComponents: .hourAndMinute)
             }
+            Picker("Week starts on", selection: Binding(
+                get: { profile.weekStartsOnSunday },
+                set: { model.setWeekStartsOnSunday($0) }
+            )) {
+                Text("Monday").tag(false)
+                Text("Sunday").tag(true)
+            }
             Button("Send a test notification", systemImage: "bell.badge") {
                 Task {
                     let allowed = await Reminders.sendTest()
@@ -348,6 +219,10 @@ struct SettingsView: View {
                         : "Notifications are off for Polyplot. Turn them on in the iPhone's Settings → Notifications → Polyplot."
                 }
             }
+        } header: {
+            Text("Reminders & week")
+        } footer: {
+            Text("Your weekly goal resets on the day your week starts.")
         }
         Section {
             // With another language set up, starting over deletes this one and switches back to that one.
@@ -376,17 +251,6 @@ struct SettingsView: View {
         }
         // Settings shared by every language.
         Section {
-            NavigationLink {
-                GeminiSettingsView { _ in checkers = SettingsView.checkersText() }
-            } label: {
-                LabeledContent("AI checkers", value: checkers)
-            }
-        } header: {
-            GroupHeading(title: "Settings across all languages", section: "Writing feedback")
-        } footer: {
-            Text("Poly checks your writing with Gemini and/or GroqCloud, both free with your own keys: your default first, then the other. Without either, a basic checker is used" + (profile.pack.isCustom ? ", except for \(profile.pack.name), which it doesn't know: that needs a key." : "."))
-        }
-        Section {
             Picker("Theme", selection: $appearance) {
                 ForEach(Appearance.allCases) { option in
                     Text(option.title).tag(option)
@@ -394,7 +258,7 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
         } header: {
-            Text("Appearance")
+            GroupHeading(title: "All languages", section: "Appearance")
         } footer: {
             Text("System follows your phone's light or dark mode.")
         }
@@ -419,7 +283,7 @@ struct SettingsView: View {
         } header: {
             Text("Backup")
         } footer: {
-            Text("Saves one file you can keep in iCloud Drive. Restoring replaces everything in Polyplot with the file's contents.")
+            Text("One file with every language, to keep in iCloud Drive. Restoring replaces everything in Polyplot with the file's contents.")
         }
         Section {
             ShareLink(item: URL(string: "https://github.com/rahns/polyplot/releases/latest")!,
@@ -430,13 +294,11 @@ struct SettingsView: View {
             Link(destination: Self.feedbackEmail) {
                 Label("Report a bug or suggest something", systemImage: "envelope")
             }
-        } header: {
-            Text("Share")
-        }
-        Section {
             NavigationLink("Credits") { CreditsView() }
-            // Changes that reshape plans or are for troubleshooting, behind a warning.
+            // Changing the level or hours by hand, and troubleshooting, behind a warning.
             NavigationLink("Advanced") { AdvancedSettingsView() }
+        } header: {
+            Text("Help & about")
         } footer: {
             VStack(spacing: 4) {
                 Text("Polyplot \(DiagnosticsModel.appVersion)")
@@ -492,14 +354,21 @@ struct SettingsView: View {
         return "You'll lose all your \(profile.pack.name) progress: \(list)."
     }
 
-    /// The last part seen: "Extra en Español: seen Ep 3 Part 2" (or "not started").
-    private func seriesProgressLabel(_ profile: LearnerProfile, _ series: LearnerSeries) -> String {
-        let name = SourceCopy.name(.learnerSeries)
-        let parts = profile.extraEpisodesWatched * series.intensiveParts + profile.extraPartsDoneInEpisode
-        guard parts > 0 else { return "\(name): not started" }
-        let episode = (parts - 1) / series.intensiveParts + 1
-        let part = (parts - 1) % series.intensiveParts + 1
-        return "\(name): seen Ep \(episode) Part \(part)"
+    /// The Sources row: "5 on · 2 custom".
+    private func sourcesSummary(_ profile: LearnerProfile) -> String {
+        let on = profile.pack.roles.filter(profile.enabledSources.contains).count
+        let custom = profile.customSources.filter(\.isEnabled).count
+        return [on > 0 ? "\(on) on" : nil, custom > 0 ? "\(custom) custom" : nil].compactMap { $0 }.joined(separator: " · ").ifEmpty("None")
+    }
+
+    /// A setting's name with a short line under it.
+    private func subtitled(_ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            Text(subtitle)
+                .font(.rounded(.caption, weight: .medium))
+                .foregroundStyle(Palette.secondaryText)
+        }
     }
 
     /// A binding that saves through the app model, so every change persists and refreshes views.
@@ -511,9 +380,9 @@ struct SettingsView: View {
     }
 }
 
-/// The first section of a group carries the group's heading above its own: "Settings for Spanish 🇪🇸"
-/// over "Sources". Sharing one header keeps the gap between them small.
-private struct GroupHeading: View {
+/// The first section of a group carries the group's heading above its own: "Spanish 🇪🇸" over "Your plan".
+/// Sharing one header keeps the gap between them small.
+struct GroupHeading: View {
     let title: String
     let section: String
 
@@ -528,3 +397,7 @@ private struct GroupHeading: View {
     }
 }
 
+
+private extension String {
+    func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
+}
