@@ -154,9 +154,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(ChunkyButtonStyle(color: step == .habit ? Palette.leaf : Palette.coral))
             .disabled((step == .sources && !draft.isCustomLanguage && draft.sources.isEmpty)
-                      || (step == .customLanguage && draft.customLanguageName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                      // "Yes" to classes needs at least one day.
-                      || (step == .lessons && draft.hasLessons && draft.lessonSchedule.isEmpty))
+                      || (step == .customLanguage && draft.customLanguageName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             .padding(20)
         }
     }
@@ -598,33 +596,30 @@ struct OnboardingView: View {
         }
     }
 
-    /// Classes or a tutor on set days: always in that day's plan, at its usual length. Each day's own length
-    /// and type can be set later in Settings → Classes/Tutoring.
+    /// Classes or a tutor on set days, only if the learner has any: nothing is expected, and Continue with no
+    /// days chosen means none. Each day's own length and type can be set later in Settings → Classes/Tutoring.
     private var lessons: some View {
         VStack(alignment: .leading, spacing: 16) {
-            StepTitle("Do you have classes or a tutor?")
-            Text("A class or tutoring session on set days is always in that day's plan, and the rest of the day balances around it.")
+            StepTitle("Classes or tutoring")
+            Text("If you're taking any classes or tutoring, add them here: they'll be part of that day's plan, and the rest of the day balances around them. Not doing any? Just continue.")
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.secondaryText)
-            HStack(spacing: 10) {
-                ChipButton(title: "Not right now", isSelected: !draft.hasLessons) { draft.hasLessons = false }
-                ChipButton(title: "Yes", isSelected: draft.hasLessons) { draft.hasLessons = true }
-            }
-            if draft.hasLessons {
-                Text("Which days?")
-                    .font(.rounded(.headline, weight: .heavy))
-                    .foregroundStyle(Palette.ink)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 10) {
-                    ForEach(draft.weekStartsOnSunday ? Array(1...7) : [2, 3, 4, 5, 6, 7, 1], id: \.self) { weekday in
-                        ChipButton(title: Calendar.current.shortWeekdaySymbols[weekday - 1], isSelected: draft.lessonSchedule.days[weekday] != nil) {
-                            if draft.lessonSchedule.days[weekday] == nil {
-                                draft.lessonSchedule.days[weekday] = .init()
-                            } else {
-                                draft.lessonSchedule.days[weekday] = nil
-                            }
+            Text("Which days, if any?")
+                .font(.rounded(.headline, weight: .heavy))
+                .foregroundStyle(Palette.ink)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 10) {
+                ForEach(draft.weekStartsOnSunday ? Array(1...7) : [2, 3, 4, 5, 6, 7, 1], id: \.self) { weekday in
+                    ChipButton(title: Calendar.current.shortWeekdaySymbols[weekday - 1], isSelected: draft.lessonSchedule.days[weekday] != nil) {
+                        if draft.lessonSchedule.days[weekday] == nil {
+                            draft.lessonSchedule.days[weekday] = .init()
+                        } else {
+                            draft.lessonSchedule.days[weekday] = nil
                         }
                     }
                 }
+            }
+            // Length and kind only once there's a day to apply them to.
+            if !draft.lessonSchedule.isEmpty {
                 RaisedCard {
                     NumberStepper(title: "Usual length (min)", value: $draft.lessonSchedule.usualMinutes, range: 15...180, step: 5)
                 }
@@ -637,13 +632,17 @@ struct OnboardingView: View {
                                    color: TaskKind.lesson(for: type).color) { draft.lessonSchedule.usualType = type }
                     }
                 }
-                Text("It decides which part of your practice it counts toward. All-in-one splits it evenly between speaking & writing, listening and grammar & vocab. Different days, lengths or kinds can be set in Settings → Classes/Tutoring.")
+                Text("It decides which part of your practice it counts toward. All-in-one splits it evenly between speaking & writing, listening and grammar & vocab.")
                     .font(.rounded(.caption, weight: .semibold))
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            Text("You can add or change classes and tutoring any time in Settings → Classes/Tutoring.")
+                .font(.rounded(.caption, weight: .semibold))
+                .foregroundStyle(Palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .animation(.snappy, value: draft.hasLessons)
+        .animation(.snappy, value: draft.lessonSchedule.isEmpty)
     }
 
     private var progress: some View {
