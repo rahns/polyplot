@@ -16,9 +16,10 @@ extension LanguagePack {
     /// Whether this pack is a language the learner named themselves.
     public var isCustom: Bool { Self.isCustom(code) }
 
-    /// A language Polyplot has no pack for ("Other language"). Its only built-in source is Polyplot's own
-    /// writing, checked by AI under the language's name (no basic checker); everything else comes from the
-    /// learner's own sources (`CustomSource`), plus the app's extras (mistake review, travel missions).
+    /// A language Polyplot has no pack for ("Other language"). Its built-in sources are the ones that work for
+    /// any language: Duolingo (as for Spanish, a daily warm-up), a Tandem/HelloTalk exchange partner, and
+    /// Polyplot's own writing, checked by AI under the language's name (no basic checker). Everything else
+    /// comes from the learner's own sources (`CustomSource`), plus the app's extras (mistake review, travel missions).
     /// Its wording is English, since Polyplot doesn't know the language's words; its level hours are
     /// Spanish's, the best-documented roadmap there is.
     /// See docs/09-multi-language.md §9.10.
@@ -32,7 +33,26 @@ extension LanguagePack {
             flag: flag.isEmpty ? defaultCustomFlag : flag,
             localeIdentifier: "en",
             levels: spanish.levels,
-            sources: [.writing: SourceInfo(
+            sources: [.drillApp: SourceInfo(
+                name: "Duolingo",
+                role: "Short daily warm-up",
+                symbol: "bolt.fill",
+                what: "An app of short, game-like lessons with a daily streak. It teaches dozens of languages: check that \(shown) is one of them.",
+                whereToFind: "The Duolingo app and duolingo.com.",
+                links: [.init("Open duolingo.com", "https://www.duolingo.com")],
+                appURL: "duolingo://",
+                webURL: "https://www.duolingo.com"),
+                      .exchange: SourceInfo(
+                name: "Tandem/HelloTalk partner",
+                shortName: "Tandem/HelloTalk",
+                role: "I have a language exchange partner",
+                symbol: "bubble.left.and.bubble.right.fill",
+                what: "Language-exchange apps where you chat with native \(shown) speakers who are learning your language: you help each other.",
+                whereToFind: "The Tandem and HelloTalk apps.",
+                links: [.init("Open tandem.net", "https://www.tandem.net"), .init("Open hellotalk.com", "https://www.hellotalk.com")],
+                appURL: "tandem://",
+                webURL: "https://www.tandem.net"),
+                      .writing: SourceInfo(
                 name: "Writing",
                 role: "Short writing tasks in Polyplot, checked by AI",
                 symbol: "pencil.and.scribble",
@@ -41,9 +61,10 @@ extension LanguagePack {
             course: nil,
             series: nil,
             graded: nil,
-            drill: nil,
-            // Only writing has a weekly target: the other anchors belong to sources this language doesn't have.
-            anchors: spanish.anchors.mapValues { AnchorTargets(writing: $0.writing) },
+            // Duolingo is used the same way for every language: a daily warm-up up to B1.2, optional at B2.1.
+            drill: spanish.drill,
+            // Writing and exchanges keep Spanish's weekly targets; the other anchors belong to sources it doesn't have.
+            anchors: spanish.anchors.mapValues { AnchorTargets(writing: $0.writing, exchanges: $0.exchanges) },
             tutor: Tutor(focus: "grammar, agreement, verb forms and tenses, word order, spelling and word choice",
                          languageToolCode: nil, explainInLanguageFrom: nil, allowsBasicChecker: false),
             phrases: Phrasebook.english,

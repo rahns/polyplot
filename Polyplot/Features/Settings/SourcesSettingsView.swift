@@ -76,7 +76,7 @@ struct SourcesSettingsView: View {
             Text("Your own")
         } footer: {
             Text(profile.pack.isCustom
-                 ? "\(profile.pack.name)'s plan is made from these, plus Polyplot's writing. Add at least one for listening, speaking & writing, fluency practice and grammar & vocab."
+                 ? "\(profile.pack.name)'s plan is made from these and the built-in sources above. Have at least one for listening, speaking & writing, fluency practice and grammar & vocab."
                  : "A podcast, a textbook, another app: anything else you learn with.")
         }
         // Where the learner is in each course, in that source's own terms (none for an "Other language").

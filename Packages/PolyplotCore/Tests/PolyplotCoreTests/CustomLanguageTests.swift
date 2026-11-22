@@ -8,7 +8,7 @@ import Testing
     let today = TestCalendar.day(2026, 10, 26)
 
     func everyType() -> [CustomSource] {
-        [CustomSource(name: "Podcast", strand: .input, minMinutes: 10, maxMinutes: 40),
+        [CustomSource(name: "Podcast", strand: .input, minMinutes: 5, maxMinutes: 40),
          CustomSource(name: "Tutor chat", strand: .output, minMinutes: 10, maxMinutes: 20),
          CustomSource(name: "Easy reading", strand: .fluency, minMinutes: 5, maxMinutes: 15),
          CustomSource(name: "Textbook", strand: .languageFocused, minMinutes: 10, maxMinutes: 20)]
@@ -35,18 +35,21 @@ import Testing
         #expect(!LanguagePack.all.contains { $0.code == code }, "never one of the built-in languages")
     }
 
-    @Test func itsOnlyBuiltInSourceIsAICheckedWriting() {
+    @Test func itsBuiltInSourcesAreTheOnesThatWorkForAnyLanguage() {
         let pack = LanguagePack.custom(code: "x-test0001", name: "Welsh", flag: "🏴")
-        #expect(pack.roles == [.writing] && pack.course == nil && pack.series == nil && pack.graded == nil && pack.drill == nil)
+        #expect(pack.roles == [.drillApp, .writing, .exchange] && pack.course == nil && pack.series == nil && pack.graded == nil)
+        #expect(pack.drill == LanguagePack.spanish.drill)
+        #expect(pack.sources[.exchange]?.what.contains("Welsh") == true)
         #expect(pack.phrases == Phrasebook.english)
         #expect(pack.levels == LanguagePack.spanish.levels)
         // Checked only by AI, told the learner's name for the language; never by the basic checker.
         #expect(pack.tutor.languageToolCode == nil && !pack.tutor.allowsBasicChecker)
         #expect(LanguagePack.spanish.tutor.allowsBasicChecker && LanguagePack.french.tutor.allowsBasicChecker)
         #expect(pack.tutor.instructions(language: pack.name, band: .a2_1, maximumErrors: 5).contains("Welsh tutor"))
-        // Writing keeps its weekly target; the other anchors belong to sources it doesn't have.
+        // Writing and exchanges keep their weekly targets; the other anchors belong to sources it doesn't have.
         for band in Band.allCases {
-            #expect(pack.anchorTargets(for: band) == AnchorTargets(writing: LanguagePack.spanish.anchorTargets(for: band).writing))
+            let spanish = LanguagePack.spanish.anchorTargets(for: band)
+            #expect(pack.anchorTargets(for: band) == AnchorTargets(writing: spanish.writing, exchanges: spanish.exchanges))
         }
     }
 
@@ -66,7 +69,7 @@ import Testing
         for budget in DayPlanner.budgetChoices {
             let plan = planner.plan(budget: budget, learner: learner, history: [], today: today)
             #expect(!plan.tasks.isEmpty, "\(band.rawValue) \(budget) min")
-            #expect(plan.tasks.allSatisfy { $0.kind.isCustom || $0.kind.source == .writing }, "\(band.rawValue) \(budget) min: \(plan.kinds)")
+            #expect(plan.tasks.allSatisfy { $0.kind.isCustom || [.writing, .drillApp, .exchange].contains($0.kind.source) }, "\(band.rawValue) \(budget) min: \(plan.kinds)")
             #expect(plan.totalMinutes <= budget)
             #expect(plan.totalMinutes >= budget - 5, "\(band.rawValue) \(budget) min planned only \(plan.totalMinutes)")
         }

@@ -97,11 +97,19 @@ struct OnboardingView: View {
         }
     }
 
-    /// An "Other language"'s study types with nothing to plan: no source of the learner's, and for speaking &
-    /// writing, Polyplot's own writing switched off too.
+    /// An "Other language"'s study types with nothing to plan: no source of the learner's and no built-in
+    /// one switched on (writing and an exchange partner for speaking & writing, Duolingo for grammar & vocab).
     private var missingTypes: [Strand] {
-        CustomSource.missingStrands(draft.customSources, covered: draft.sources.contains(.writing) ? [.output] : [])
+        let covered = Set(Self.builtIns.filter { draft.sources.contains($0.role) }.map(\.strand))
+        return CustomSource.missingStrands(draft.customSources, covered: covered)
     }
+
+    /// The built-in sources an "Other language" has, the study type each fills, and how it's described there.
+    private static let builtIns: [(role: SourceKind, strand: Strand, title: String, subtitle: (String) -> String)] = [
+        (.exchange, .output, "Tandem/HelloTalk partner", { "Messages, then voice notes and calls, with a native \($0) speaker" }),
+        (.writing, .output, "Polyplot's writing tasks", { "Guided writing in \($0), checked by AI with your own free key" }),
+        (.drillApp, .languageFocused, "Duolingo", { "A short daily warm-up, if Duolingo teaches \($0)" }),
+    ]
 
     /// "No source for fluency practice or grammar & vocab".
     private var missingTypesTitle: String {
@@ -321,7 +329,7 @@ struct OnboardingView: View {
     private var customLanguage: some View {
         VStack(alignment: .leading, spacing: 16) {
             StepTitle("Which language?")
-            Text("Polyplot has no built-in sources for it, so your plan is built entirely from sources you add next: podcasts, a course, a tutor, anything you use.")
+            Text("Polyplot has no courses or shows made for it, so your plan is built from sources you add next (podcasts, a course, a tutor, anything you use), plus Duolingo, a language exchange partner and Polyplot's writing if you want them.")
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.secondaryText)
             TextField("Language, e.g. Welsh", text: $draft.customLanguageName)
@@ -342,7 +350,7 @@ struct OnboardingView: View {
         let name = draft.pack.name
         return VStack(alignment: .leading, spacing: 14) {
             StepTitle("Add your \(name) sources")
-            Text("Your plan is made only from these. Add at least one of each type, so every day can mix listening, speaking & writing, fluency practice and grammar & vocab. You can change them any time in Settings → Sources.")
+            Text("Your plan is made from these. Have at least one of each type, so every day can mix listening, speaking & writing, fluency practice and grammar & vocab. You can change them any time in Settings → Sources.")
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.secondaryText)
             ForEach(CustomSource.setupOrder, id: \.self) { strand in
@@ -353,7 +361,8 @@ struct OnboardingView: View {
 
     private func customTypeCard(_ strand: Strand) -> some View {
         let added = draft.customSources.filter { $0.strand == strand }
-        let writingOn = draft.sources.contains(.writing)
+        let builtIns = Self.builtIns.filter { $0.strand == strand }
+        let builtInOn = builtIns.contains { draft.sources.contains($0.role) }
         return RaisedCard(accent: strand.color) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
@@ -400,34 +409,35 @@ struct OnboardingView: View {
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
                 }
-                // Speaking & writing also has Polyplot's own writing, checked by AI.
-                if strand == .output {
+                // Built-in sources that fill this type: an exchange partner and writing, or Duolingo.
+                ForEach(builtIns, id: \.role) { builtIn in
+                    let on = draft.sources.contains(builtIn.role)
                     Button {
-                        if writingOn { draft.sources.remove(.writing) } else { draft.sources.insert(.writing) }
+                        if on { draft.sources.remove(builtIn.role) } else { draft.sources.insert(builtIn.role) }
                     } label: {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("Polyplot's writing tasks")
+                                Text(builtIn.title)
                                     .font(.rounded(.body, weight: .bold))
                                     .foregroundStyle(Palette.ink)
-                                Text("Guided writing in \(draft.pack.name), checked by AI with your own free key")
+                                Text(builtIn.subtitle(draft.pack.name))
                                     .font(.rounded(.caption, weight: .medium))
                                     .foregroundStyle(Palette.secondaryText)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: writingOn ? "checkmark.circle.fill" : "circle")
+                            Image(systemName: on ? "checkmark.circle.fill" : "circle")
                                 .font(.title2)
-                                .foregroundStyle(writingOn ? Palette.leaf : Palette.secondaryText)
+                                .foregroundStyle(on ? Palette.leaf : Palette.secondaryText)
                         }
                         .padding(10)
                         .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(writingOn ? "Using Polyplot's writing tasks" : "Not using Polyplot's writing tasks")
-                    .sensoryFeedback(.selection, trigger: writingOn)
+                    .accessibilityLabel(on ? "Using \(builtIn.title)" : "Not using \(builtIn.title)")
+                    .sensoryFeedback(.selection, trigger: on)
                 }
-                if added.isEmpty && !(strand == .output && writingOn) {
+                if added.isEmpty && !builtInOn {
                     Label("No source yet. Without one, this part of learning is left out of your plan.", systemImage: "exclamationmark.triangle.fill")
                         .font(.rounded(.caption, weight: .semibold))
                         .foregroundStyle(Palette.coral)
