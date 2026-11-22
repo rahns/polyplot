@@ -832,7 +832,7 @@ struct OnboardingView: View {
                     .font(.rounded(.caption, weight: .semibold))
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
-                ForEach(Band.allCases.filter { $0 > .a1_1 }, id: \.self) { band in
+                ForEach(Band.allCases, id: \.self) { band in
                     let hours = pack.levels.typicalListeningHours(for: band)
                     let chosen = draft.otherListeningHours == hours
                     Button {

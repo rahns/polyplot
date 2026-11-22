@@ -76,7 +76,7 @@ extension Band {
     /// "Not sure?" list). Language-neutral, like the can-do statements.
     public var summary: String {
         switch self {
-        case .a1_1: "Just starting: a few words and phrases at most."
+        case .a1_1: "Not brand new, but early days: some words and set phrases. Even slow speech is mostly hard to follow."
         case .a1_2: "Greetings, numbers and simple questions about yourself. You catch single words when people speak slowly."
         case .a2_1: "Short, simple conversations about familiar things, with help. You follow slow, clear speech, especially with pictures."
         case .a2_2: "Shopping, directions and small talk. You get the gist of easy videos made for learners."
