@@ -65,9 +65,13 @@ public struct LanguagePack: Sendable, Identifiable {
     /// The language of records saved before languages were tagged.
     public static let defaultCode = "es"
 
-    /// The pack for a stored code; Spanish for an unknown or missing one.
+    /// The pack for a stored code; Spanish for an unknown or missing one. A learner-named language
+    /// ("x-…") is the one registered for it, or, before it's registered, an unnamed one with that code,
+    /// so its code is never lost.
     public static func pack(for code: String?) -> LanguagePack {
-        all.first { $0.code == code } ?? .spanish
+        if let pack = all.first(where: { $0.code == code }) { return pack }
+        if let code, isCustom(code) { return customRegistry.pack(for: code) ?? .custom(code: code, name: "", flag: "") }
+        return .spanish
     }
 
     /// Whether the language has a source for `role`.

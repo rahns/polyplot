@@ -24,7 +24,7 @@ Defined in `Polyplot/Models/Models.swift`. Enums are stored as raw strings/ints,
 | `WritingEntry` | Text written in a writing task, with its prompt, the correction (encoded `CorrectionService.Result`) and the learner's rewrite. |
 | `ReviewCard` | A mistake-deck card: front, back, explanation, origin (writing / tandem / manual), the writing entry it came from, and its FSRS state (due, stability, difficulty, reps, lapses, state, last review). |
 
-The profile also keeps the lesson schedule (`lessonScheduleData`, an encoded `LessonSchedule`), the custom sources (`customSourcesData`, an encoded `[CustomSource]`, nil for none), `alwaysIncludeDuolingo`, `speakingStageCap` and the saved path colours (`pathHistoryData`, an encoded `PathLayout.PathHistory`, optional with no default needed); all are in backups.
+The profile also keeps the lesson schedule (`lessonScheduleData`, an encoded `LessonSchedule`), the custom sources (`customSourcesData`, an encoded `[CustomSource]`, nil for none), an "Other language"'s name and emoji (`customLanguageName`, `customLanguageFlag`, empty for a built-in language), `alwaysIncludeDuolingo`, `speakingStageCap` and the saved path colours (`pathHistoryData`, an encoded `PathLayout.PathHistory`, optional with no default needed); all are in backups.
 
 Gate attempts are stored on the profile (`gatesPassed`, `lastFailedGate`) rather than as their own model.
 

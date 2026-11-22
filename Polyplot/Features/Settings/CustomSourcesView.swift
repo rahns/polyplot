@@ -104,10 +104,17 @@ struct CustomSourcesView: View {
 }
 
 /// Adding or editing one custom source: its name, study type and how long its tasks can be.
-private struct CustomSourceEditor: View {
-    @State var source: CustomSource
+/// Also used by "Other language" setup in onboarding.
+struct CustomSourceEditor: View {
+    @State private var source: CustomSource
     let isNew: Bool
     let onSave: (CustomSource) -> Void
+
+    init(source: CustomSource, isNew: Bool, onSave: @escaping (CustomSource) -> Void) {
+        _source = State(initialValue: source)
+        self.isNew = isNew
+        self.onSave = onSave
+    }
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
@@ -174,12 +181,7 @@ private struct CustomSourceEditor: View {
 
     /// What the study type means, and a warning when today's plan gives that type no time at all.
     private var strandNote: String {
-        let what = switch source.strand {
-        case .input: "Listening counts toward your listening hours."
-        case .languageFocused: "Grammar & vocab: courses, textbooks, flashcards."
-        case .output: "Speaking & writing: anything where you produce the language."
-        case .fluency: "Fluency: easy material at speed, retelling, chatting about familiar things."
-        }
+        let what = source.strand.ownSourceExpectation
         guard let profile = model.profile, (model.snapshot(for: profile).strandTargets[source.strand] ?? 0) == 0 else { return what }
         return what + " Your plan has no \(TaskCopy.otherName(source.strand).lowercased()) at the moment, so it won't be planned until it does."
     }

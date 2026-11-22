@@ -55,22 +55,43 @@ struct SettingsView: View {
     private func sections(_ profile: LearnerProfile) -> some View {
         // Which language is being learned: first, above everything that belongs to it.
         Section {
-            if LanguagePack.all.count > 1 {
-                // Each language has its own level, plan, goal and streak. One without a profile yet starts its setup.
-                Picker("Learning", selection: Binding(get: { model.languageCode }, set: { model.setLanguage($0, announce: true) })) {
-                    ForEach(LanguagePack.all) { pack in
-                        Text(pack.name).tag(pack.code)
-                    }
+            // Each language has its own level, plan, goal and streak. One without a profile yet starts its setup;
+            // "Other language…" sets up a language Polyplot has no sources for, from the learner's own.
+            Picker("Learning", selection: Binding(get: { model.languageCode }, set: { code in
+                model.setLanguage(code == Self.newCustomLanguageTag ? LanguagePack.newCustomCode() : code, announce: true)
+            })) {
+                ForEach(LanguagePack.all) { pack in
+                    Text(pack.name).tag(pack.code)
                 }
-            } else {
-                LabeledContent("Learning", value: profile.pack.name)
+                ForEach(model.profiles.filter { LanguagePack.isCustom($0.languageCode) }, id: \.languageCode) { custom in
+                    Text("\(custom.pack.flag) \(custom.pack.name)").tag(custom.languageCode)
+                }
+                Text("Other language…").tag(Self.newCustomLanguageTag)
+            }
+            if profile.pack.isCustom {
+                TextField("Name", text: Binding(get: { profile.customLanguageName }, set: { model.renameCustomLanguage(name: $0) }))
+                    .textInputAutocapitalization(.words)
+                NavigationLink {
+                    Form {
+                        Section {
+                            EmojiPicker(selection: Binding(get: { profile.pack.flag }, set: { model.renameCustomLanguage(flag: $0) }))
+                                .padding(.vertical, 6)
+                        }
+                        .polyplotRows()
+                    }
+                    .polyplotListBackground()
+                    .navigationTitle("Emoji")
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    LabeledContent("Emoji", value: profile.pack.flag)
+                }
             }
         } header: {
             Text("Language")
         } footer: {
-            Text(LanguagePack.all.count > 1
-                 ? "Each language keeps its own level, plan, goal and streak."
-                 : "More languages are on the way\(LanguagePack.upcoming.first.map { ": \($0) is next" } ?? "").")
+            Text(profile.pack.isCustom
+                 ? "Each language keeps its own level, plan, goal and streak. \(profile.pack.name) has no built-in sources: its plan comes from your custom sources below."
+                 : "Each language keeps its own level, plan, goal and streak. For any other language, choose Other language and add your own sources.")
         }
         // Settings for the language being learned: each language has its own.
         Section {
@@ -118,7 +139,9 @@ struct SettingsView: View {
         } header: {
             GroupHeading(title: "Settings for \(profile.pack.name) \(profile.pack.flag)", section: "Sources")
         } footer: {
-            Text("Tap a source to see what it is and where to find it. Add your own (a podcast, a textbook, another app) in Custom sources.")
+            Text(profile.pack.isCustom
+                 ? "\(profile.pack.name)'s plan is made from your custom sources: add at least one for listening, speaking & writing, fluency practice and grammar & vocab."
+                 : "Tap a source to see what it is and where to find it. Add your own (a podcast, a textbook, another app) in Custom sources.")
         }
         Section {
             NavigationLink {
@@ -186,7 +209,8 @@ struct SettingsView: View {
             Text("Adds a real-world \(profile.pack.name) mission to every day's plan." + (model.canChangeBudget ? "" : " Today's plan has started, so this applies from tomorrow."))
         }
 
-        // One row per source the language has, each in that source's own terms.
+        // One row per source the language has, each in that source's own terms (none for an "Other language").
+        if !profile.pack.roles.isEmpty {
         Section("Progress") {
             let pack = profile.pack
             if let graded = pack.graded {
@@ -235,6 +259,9 @@ struct SettingsView: View {
                 Toggle("Keep a \(SourceCopy.name(.drillApp)) warm-up", isOn: binding(get: { profile.keepDuolingoInB2 }, set: { profile.keepDuolingoInB2 = $0 }))
             }
         }
+        }
+        // Speaking stages pace the exchange partner, which an "Other language" doesn't have.
+        if profile.pack.has(.exchange) {
         Section {
             Toggle("I'm ready for voice notes", isOn: binding(
                 get: { profile.speakingStage >= .voiceNotes },
@@ -249,6 +276,7 @@ struct SettingsView: View {
             Text("Speaking")
         } footer: {
             Text("Polyplot switches these on by itself as your hours and \(profile.pack.sources[.exchange]?.shortName ?? "partner") exchanges grow, and you can go early if you feel ready. Switch one off and it stays off until you switch it back on.")
+        }
         }
         Section("Habit") {
             if profile.pack.has(.drillApp) {
@@ -395,6 +423,9 @@ struct SettingsView: View {
             .padding(.bottom, 24)
         }
     }
+
+    /// The language picker's "Other language…" entry: picking it sets up a new language with its own code.
+    static let newCustomLanguageTag = "x-new"
 
     /// A new email to Rahn in the Mail app, with the app and iOS version filled in for bug reports.
     static var feedbackEmail: URL {

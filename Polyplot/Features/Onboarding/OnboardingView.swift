@@ -11,7 +11,8 @@ struct OnboardingView: View {
     init(addingLanguage: Bool = false, onFinish: @escaping (OnboardingDraft) -> Void) {
         self.addingLanguage = addingLanguage
         self.onFinish = onFinish
-        _step = State(initialValue: addingLanguage ? .sources : .welcome)
+        // An "Other language" added from Settings starts by naming it.
+        _step = State(initialValue: addingLanguage ? (LanguagePack.isCustom(ActiveLanguage.code) ? .customLanguage : .sources) : .welcome)
     }
 
     @Environment(AppModel.self) private var model
@@ -20,10 +21,14 @@ struct OnboardingView: View {
     @State private var restoreError: String?
     @State private var step: Step
     @State private var canDoIndex = 0
+    /// "Other language": the source being added or edited, and the warning about types left empty.
+    @State private var editingSource: CustomSource?
+    @State private var confirmingMissingTypes = false
 
     enum Step: Int, CaseIterable {
         // The goal comes after placement, so the weekly goal and target date can be worked out from your hours.
-        case welcome, language, name, sources, progress, canDo, placement, goal, feedback, habit
+        // "Other language" adds naming it (customLanguage) and choosing its balance; its sources are its own.
+        case welcome, language, customLanguage, name, sources, progress, canDo, placement, balance, goal, feedback, habit
     }
 
     var body: some View {
@@ -75,6 +80,29 @@ struct OnboardingView: View {
         .alert(restoreError ?? "", isPresented: Binding(get: { restoreError != nil }, set: { if !$0 { restoreError = nil } })) {
             Button("OK", role: .cancel) {}
         }
+        .sheet(item: $editingSource) { source in
+            CustomSourceEditor(source: source, isNew: !draft.customSources.contains { $0.id == source.id }) { saved in
+                if let index = draft.customSources.firstIndex(where: { $0.id == saved.id }) {
+                    draft.customSources[index] = saved
+                } else {
+                    draft.customSources.append(saved)
+                }
+            }
+        }
+        .confirmationDialog(missingTypesTitle, isPresented: $confirmingMissingTypes, titleVisibility: .visible) {
+            Button("Add sources first", role: .cancel) {}
+            Button("Continue anyway") { go(to: neighbour(of: step, by: 1) ?? .habit) }
+        } message: {
+            Text("Your plan can only use the types you have sources for, so their time goes to the others, and some research-backed parts of learning are left out. You can add sources any time in Settings → Sources → Custom sources.")
+        }
+    }
+
+    /// "No source for fluency practice or grammar & vocab".
+    private var missingTypesTitle: String {
+        let names = CustomSource.missingStrands(draft.customSources).map { $0.label.lowercased() }
+        guard let last = names.last else { return "" }
+        let list = names.count > 1 ? names.dropLast().joined(separator: ", ") + " or " + last : last
+        return "No source for \(list)"
     }
 
     // MARK: Chrome
@@ -111,7 +139,8 @@ struct OnboardingView: View {
                 advance()
             }
             .buttonStyle(ChunkyButtonStyle(color: step == .habit ? Palette.leaf : Palette.coral))
-            .disabled(step == .sources && draft.sources.isEmpty)
+            .disabled((step == .sources && !draft.isCustomLanguage && draft.sources.isEmpty)
+                      || (step == .customLanguage && draft.customLanguageName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             .padding(20)
         }
     }
@@ -131,6 +160,11 @@ struct OnboardingView: View {
             canDoIndex = 0
             draft.canDoAnswers = [:]
         }
+        // An "Other language" can go on without a source of every type, but is warned first.
+        if step == .sources, draft.isCustomLanguage, !CustomSource.missingStrands(draft.customSources).isEmpty {
+            confirmingMissingTypes = true
+            return
+        }
         go(to: neighbour(of: step, by: 1) ?? .habit)
     }
 
@@ -138,23 +172,31 @@ struct OnboardingView: View {
     /// skips the writing-feedback step when one is already set up.
     private var skipsFeedback: Bool {
         addingLanguage && (GeminiKey.current != nil || GroqKey.current != nil)
+            // An "Other language" has no built-in writing tasks to check.
+            || draft.isCustomLanguage
     }
 
     /// The next or previous step, passing over the ones this setup skips.
     private func neighbour(of step: Step, by offset: Int) -> Step? {
         var next = Step(rawValue: step.rawValue + offset)
         // Someone starting from zero has no can-do questions to answer: they start at A1.1.
-        while (next == .feedback && skipsFeedback) || (next == .canDo && draft.startingFromZero) {
+        // Naming the language and choosing its balance are for an "Other language" only.
+        while (next == .feedback && skipsFeedback) || (next == .canDo && draft.startingFromZero)
+                || ((next == .customLanguage || next == .balance) && !draft.isCustomLanguage)
+                // Adding a language: the learner's name is already known.
+                || (next == .name && addingLanguage) {
             next = Step(rawValue: next!.rawValue + offset)
         }
         return next
     }
 
     /// Where setup starts: the welcome on first launch, the sources when adding a language.
-    private var firstStep: Step { addingLanguage ? .sources : .welcome }
+    private var firstStep: Step { addingLanguage ? (draft.isCustomLanguage ? .customLanguage : .sources) : .welcome }
 
     private func go(to newStep: Step) {
         if newStep == .goal { draft.prepareGoal() }
+        // The own-balance sliders start from the level's split, until the learner moves them.
+        if newStep == .balance && !draft.usesOwnBalance { draft.ownBalance = StrandBalance(band: draft.placement.band) }
         step = newStep
     }
 
@@ -165,12 +207,14 @@ struct OnboardingView: View {
         switch step {
         case .welcome: welcome
         case .language: language
+        case .customLanguage: customLanguage
         case .name: name
         case .goal: goal
         case .sources: sources
         case .progress: progress
         case .canDo: canDo
         case .placement: placement
+        case .balance: balance
         case .feedback: feedback
         case .habit: habit
         }
@@ -232,6 +276,27 @@ struct OnboardingView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(chosen ? "\(pack.name), chosen" : pack.name)
             }
+            // Any other language, planned from the learner's own sources.
+            Button {
+                if !draft.isCustomLanguage { draft.languageCode = LanguagePack.newCustomCode() }
+            } label: {
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Other language").font(.rounded(.headline, weight: .bold))
+                        Text("Any language, planned from sources you add").font(.rounded(.caption, weight: .medium)).foregroundStyle(Palette.secondaryText)
+                    }
+                    .foregroundStyle(Palette.ink)
+                    Spacer(minLength: 0)
+                    Image(systemName: draft.isCustomLanguage ? "checkmark.circle.fill" : "circle")
+                        .font(.title)
+                        .foregroundStyle(draft.isCustomLanguage ? Palette.leaf : Palette.secondaryText)
+                }
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Palette.card))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(draft.isCustomLanguage ? "Other language, chosen" : "Other language")
             ForEach(LanguagePack.upcoming, id: \.self) { name in
                 HStack {
                     Text(name).font(.rounded(.headline, weight: .bold))
@@ -244,6 +309,193 @@ struct OnboardingView: View {
             }
         }
         .sensoryFeedback(.selection, trigger: draft.languageCode)
+    }
+
+    // MARK: Other language
+
+    /// Naming an "Other language" and picking its emoji.
+    private var customLanguage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            StepTitle("Which language?")
+            Text("Polyplot has no built-in sources for it, so your plan is built entirely from sources you add next: podcasts, a course, a tutor, anything you use.")
+                .font(.rounded(.subheadline, weight: .medium))
+                .foregroundStyle(Palette.secondaryText)
+            TextField("Language, e.g. Welsh", text: $draft.customLanguageName)
+                .textInputAutocapitalization(.words)
+                .font(.rounded(.title3, weight: .semibold))
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Palette.card))
+            Text("Pick an emoji for it")
+                .font(.rounded(.headline, weight: .heavy))
+                .foregroundStyle(Palette.ink)
+                .padding(.top, 4)
+            EmojiPicker(selection: $draft.customLanguageFlag)
+        }
+    }
+
+    /// An "Other language"'s sources: one card per study type, each saying what's expected of it.
+    private var customSources: some View {
+        let name = draft.pack.name
+        return VStack(alignment: .leading, spacing: 14) {
+            StepTitle("Add your \(name) sources")
+            Text("Your plan is made only from these. Add at least one of each type, so every day can mix listening, speaking & writing, fluency practice and grammar & vocab. You can change them any time in Settings → Sources.")
+                .font(.rounded(.subheadline, weight: .medium))
+                .foregroundStyle(Palette.secondaryText)
+            ForEach(CustomSource.setupOrder, id: \.self) { strand in
+                customTypeCard(strand)
+            }
+        }
+    }
+
+    private func customTypeCard(_ strand: Strand) -> some View {
+        let added = draft.customSources.filter { $0.strand == strand }
+        return RaisedCard(accent: strand.color) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: TaskCopy.symbol(for: TaskKind.custom(for: strand)))
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(strand.color))
+                    Text(strand.label)
+                        .font(.rounded(.headline, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                }
+                Text(strand.ownSourceExpectation)
+                    .font(.rounded(.subheadline, weight: .medium))
+                    .foregroundStyle(Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(added) { source in
+                    HStack(spacing: 10) {
+                        Button {
+                            editingSource = source
+                        } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(source.name)
+                                    .font(.rounded(.body, weight: .bold))
+                                    .foregroundStyle(Palette.ink)
+                                Text(CustomSourcesView.rangeText(source.minuteRange))
+                                    .font(.rounded(.caption, weight: .medium))
+                                    .foregroundStyle(Palette.secondaryText)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            withAnimation(.snappy) { draft.customSources.removeAll { $0.id == source.id } }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Palette.secondaryText)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(source.name)")
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Palette.background))
+                }
+                if added.isEmpty {
+                    Label("No source yet. Without one, this part of learning is left out of your plan.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.rounded(.caption, weight: .semibold))
+                        .foregroundStyle(Palette.coral)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button {
+                    editingSource = Self.newSource(strand)
+                } label: {
+                    Label(added.isEmpty ? "Add a source" : "Add another", systemImage: "plus")
+                }
+                .buttonStyle(ChunkySecondaryButtonStyle())
+            }
+        }
+        .animation(.snappy, value: added)
+    }
+
+    /// A new source of this type, with a length that suits it.
+    private static func newSource(_ strand: Strand) -> CustomSource {
+        let range: (Int, Int) = switch strand {
+        case .input: (15, 40)
+        case .output: (10, 20)
+        case .fluency: (5, 15)
+        case .languageFocused: (10, 20)
+        }
+        return CustomSource(name: "", strand: strand, minMinutes: range.0, maxMinutes: range.1)
+    }
+
+    /// Polyplot's split for each level, or the learner's own for this language.
+    private var balance: some View {
+        let band = draft.placement.band
+        let standard = StrandBalance(band: band)
+        let order: [Strand] = [.input, .languageFocused, .output, .fluency]
+        return VStack(alignment: .leading, spacing: 14) {
+            StepTitle("How should your time be split?")
+            Text("Each day's plan shares your time between listening, grammar & vocab, speaking & writing and fluency practice.")
+                .font(.rounded(.subheadline, weight: .medium))
+                .foregroundStyle(Palette.secondaryText)
+            balanceChoice(chosen: !draft.usesOwnBalance, title: "Polyplot's balance for each level",
+                          note: "Recommended",
+                          text: "Based on research for each stage of learning: Paul Nation's four strands (meaning-focused input, meaning-focused output, language-focused study and fluency), Stephen Krashen's work on comprehensible input and Merrill Swain's on output. It shifts as you level up: more grammar & vocab at the start, more speaking & writing later, and listening about half your time throughout. At \(band.rawValue): " + order.map { "\($0.label) \(standard[$0])%" }.joined(separator: " · ") + ".") {
+                draft.usesOwnBalance = false
+            }
+            balanceChoice(chosen: draft.usesOwnBalance, title: "Set my own balance", note: nil,
+                          text: "Your own split for this language. It stays as you set it at every level.") {
+                draft.usesOwnBalance = true
+            }
+            if draft.usesOwnBalance {
+                RaisedCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        BalanceBar(balance: draft.ownBalance, order: order)
+                        ForEach(order, id: \.self) { strand in
+                            StrandSliderRow(strand: strand, percent: draft.ownBalance[strand], enabled: true,
+                                            warning: CustomSource.missingStrands(draft.customSources).contains(strand) && draft.ownBalance[strand] > 0
+                                                ? "You have no source for this yet, so its share goes to the others until you add one."
+                                                : nil) { value in
+                                draft.ownBalance.set(strand, to: value)
+                            } onRelease: {}
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+            Text("You can change this any time in Settings → Plan balance.")
+                .font(.rounded(.caption, weight: .semibold))
+                .foregroundStyle(Palette.secondaryText)
+        }
+        .animation(.snappy, value: draft.usesOwnBalance)
+    }
+
+    private func balanceChoice(chosen: Bool, title: String, note: String?, text: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(chosen ? Palette.leaf : Palette.secondaryText)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(title).font(.rounded(.headline, weight: .bold)).foregroundStyle(Palette.ink)
+                        if let note {
+                            Text(note)
+                                .font(.rounded(.caption2, weight: .heavy))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Palette.leaf))
+                        }
+                    }
+                    Text(text)
+                        .font(.rounded(.caption, weight: .medium))
+                        .foregroundStyle(Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Palette.card))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: chosen)
     }
 
     private var name: some View {
@@ -268,7 +520,12 @@ struct OnboardingView: View {
         }
     }
 
+    @ViewBuilder
     private var sources: some View {
+        if draft.isCustomLanguage { customSources } else { builtInSources }
+    }
+
+    private var builtInSources: some View {
         VStack(alignment: .leading, spacing: 14) {
             StepTitle("Which sources do you want to use?")
             Text("Tick the ones you use already or want to start; Polyplot builds your plan from those. Not sure what one is? Tap it.")
@@ -290,6 +547,7 @@ struct OnboardingView: View {
             StepTitle("Where are you now?")
             Text(draft.startingFromZero
                  ? "Polyplot will start you at the very beginning."
+                 : draft.isCustomLanguage ? "A rough guess is fine. It's what Polyplot uses to place you."
                  : "Check each app for these numbers. They're what Polyplot uses to place you.")
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.secondaryText)
@@ -421,6 +679,9 @@ struct OnboardingView: View {
     }
 
     private func placementReason(_ result: Placement.Result) -> String {
+        if draft.startingFromZero && draft.isCustomLanguage {
+            return "Starting from zero, with short, easy sessions from your sources. The level-up check comes once you've put in the hours."
+        }
         if draft.startingFromZero {
             return "Starting from zero: the easiest videos, the first course tracks and short daily lessons. The level-up check comes once you've put in the hours."
         }
@@ -636,5 +897,65 @@ struct PolySpeechBubble: View {
                     .offset(y: 11)
             }
             .padding(.bottom, 10)
+    }
+}
+
+/// An emoji for an "Other language": a grid of flags and symbols, or any emoji typed in.
+struct EmojiPicker: View {
+    @Binding var selection: String
+    @State private var typed = ""
+
+    static let suggestions = ["🇩🇪", "🇮🇹", "🇵🇹", "🇧🇷", "🇳🇱", "🇸🇪", "🇳🇴", "🇩🇰", "🇫🇮", "🇵🇱", "🇬🇷", "🇹🇷",
+                              "🇷🇺", "🇺🇦", "🇯🇵", "🇰🇷", "🇨🇳", "🇮🇳", "🇮🇱", "🇸🇦", "🇻🇳", "🇹🇭", "🇮🇩", "🇵🇭",
+                              "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "🇮🇪", "🌐", "🗣️", "📚", "🦜", "✨"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                ForEach(Self.suggestions, id: \.self) { emoji in
+                    let chosen = selection == emoji
+                    Button {
+                        selection = emoji
+                    } label: {
+                        Text(emoji)
+                            .font(.system(size: 28))
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(chosen ? Palette.leaf.opacity(0.25) : Palette.card))
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(chosen ? Palette.leaf : .clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(chosen ? "\(emoji), chosen" : emoji)
+                }
+            }
+            HStack(spacing: 12) {
+                Text("Or type any emoji")
+                    .font(.rounded(.subheadline, weight: .semibold))
+                    .foregroundStyle(Palette.secondaryText)
+                Spacer()
+                TextField("🙂", text: $typed)
+                    .font(.system(size: 28))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 64, height: 46)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Palette.card))
+                    .onChange(of: typed) { _, text in
+                        guard let emoji = Self.lastEmoji(in: text) else {
+                            if !text.isEmpty { typed = "" }
+                            return
+                        }
+                        if typed != emoji { typed = emoji }
+                        selection = emoji
+                    }
+            }
+        }
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+
+    /// The last emoji in `text` (a flag, a symbol, one with a skin tone…), ignoring letters and digits.
+    static func lastEmoji(in text: String) -> String? {
+        text.last { character in
+            let scalars = character.unicodeScalars
+            return scalars.contains { $0.properties.isEmojiPresentation }
+                || (scalars.count > 1 && scalars.first?.properties.isEmoji == true)
+        }.map(String.init)
     }
 }

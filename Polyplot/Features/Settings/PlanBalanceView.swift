@@ -94,7 +94,7 @@ struct PlanBalanceView: View {
 }
 
 /// The split as one bar in the strands' colours, with each share's percentage inside it when it fits.
-private struct BalanceBar: View {
+struct BalanceBar: View {
     let balance: StrandBalance
     let order: [Strand]
 
@@ -126,7 +126,7 @@ private struct BalanceBar: View {
 }
 
 /// One strand: its colour, name, what counts toward it, its share, and a slider in its colour.
-private struct StrandSliderRow: View {
+struct StrandSliderRow: View {
     let strand: Strand
     let percent: Int
     let enabled: Bool

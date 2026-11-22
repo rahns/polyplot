@@ -63,10 +63,18 @@ protocol LanguageTagged: AnyObject {
     var strandBalanceData: Data?
     /// Encoded `[CustomSource]` (Settings → Sources → Custom sources); nil = none.
     var customSourcesData: Data?
+    /// An "Other language" (code "x-…"): the name and emoji the learner gave it. Empty for a built-in language.
+    var customLanguageName: String = ""
+    var customLanguageFlag: String = ""
 
     init() {}
 
-    var pack: LanguagePack { LanguagePack.pack(for: languageCode) }
+    /// The language's pack. An "Other language" is built from its name and emoji (`LanguagePack.custom`).
+    var pack: LanguagePack {
+        LanguagePack.isCustom(languageCode)
+            ? .custom(code: languageCode, name: customLanguageName, flag: customLanguageFlag)
+            : LanguagePack.pack(for: languageCode)
+    }
 
     /// Graded video ranges are always this wide (40–45 in Dreaming Spanish); moving them slides the whole window.
     var gradedWindowWidth: Int { pack.graded?.windowWidth ?? 5 }

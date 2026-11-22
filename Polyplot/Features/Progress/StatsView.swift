@@ -146,6 +146,17 @@ struct StatsView: View {
                 if sources.contains(.exchange) {
                     infoRow(pack.sources[.exchange]?.shortName ?? "Exchange", "Speaking stage: \(stageName(profile.speakingStage))")
                 }
+                // The learner's own sources, with the time logged on each.
+                let logs = model.logs
+                ForEach(profile.customSources.filter(\.isEnabled)) { source in
+                    let minutes = logs.filter { $0.customSourceID == source.id }.reduce(0) { $0 + $1.minutes }
+                    infoRow(source.name, "\(source.strand.label) · " + (minutes < 60 ? "\(minutes) min" : String(format: "%.1f h", Double(minutes) / 60)))
+                }
+                if sources.isEmpty && profile.customSources.allSatisfy({ !$0.isEnabled }) {
+                    Text("No sources switched on. Add your own in Settings → Sources → Custom sources.")
+                        .font(.rounded(.subheadline, weight: .medium))
+                        .foregroundStyle(Palette.secondaryText)
+                }
             }
         }
     }

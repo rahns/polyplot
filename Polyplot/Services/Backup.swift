@@ -80,6 +80,9 @@ struct BackupFile: Codable {
         var strandBalance: StrandBalance?
         /// Added later: Settings → Sources → Custom sources.
         var customSources: [CustomSource]?
+        /// Added later: an "Other language"'s name and emoji.
+        var customLanguageName: String?
+        var customLanguageFlag: String?
         /// Version 2: the language this profile is for. Missing means Spanish.
         var language: String?
     }
@@ -245,6 +248,8 @@ extension BackupFile.ProfileData {
             pathHistory: profile.pathHistoryData == nil ? nil : profile.pathHistory,
             strandBalance: profile.strandBalance,
             customSources: profile.customSources.isEmpty ? nil : profile.customSources,
+            customLanguageName: profile.customLanguageName.isEmpty ? nil : profile.customLanguageName,
+            customLanguageFlag: profile.customLanguageFlag.isEmpty ? nil : profile.customLanguageFlag,
             language: profile.languageCode
         )
     }
@@ -285,6 +290,8 @@ extension BackupFile.ProfileData {
         if let pathHistory { profile.pathHistory = pathHistory }
         profile.strandBalance = strandBalance
         profile.customSources = customSources ?? []
+        profile.customLanguageName = customLanguageName ?? ""
+        profile.customLanguageFlag = customLanguageFlag ?? ""
         return profile
     }
 }

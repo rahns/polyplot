@@ -70,6 +70,26 @@ final class AppModel {
         publishWidgets()
     }
 
+    /// Makes every "Other language" with a profile known to `LanguagePack.pack(for:)`, by its name and emoji.
+    private func registerCustomLanguages() {
+        for profile in profiles where LanguagePack.isCustom(profile.languageCode) {
+            LanguagePack.register(profile.pack)
+        }
+    }
+
+    /// Settings → Language: renames an "Other language" or changes its emoji.
+    func renameCustomLanguage(name: String? = nil, flag: String? = nil) {
+        guard let profile, LanguagePack.isCustom(profile.languageCode) else { return }
+        if let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            profile.customLanguageName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let flag, !flag.isEmpty { profile.customLanguageFlag = flag }
+        LanguagePack.register(profile.pack)
+        ActiveLanguage.set(profile.languageCode)
+        save()
+        refreshReminders()
+    }
+
     /// Saves a new record as belonging to the language being learned.
     private func insert<Record: PersistentModel & LanguageTagged>(_ record: Record) {
         record.languageCode = languageCode
@@ -116,6 +136,11 @@ final class AppModel {
             Task { @MainActor in self?.isOnline = path.status == .satisfied }
         }
         pathMonitor.start(queue: DispatchQueue(label: "polyplot.network"))
+        // "Other languages" are named by the learner: make them known, then reread the remembered one by its name.
+        registerCustomLanguages()
+        ActiveLanguage.set(ActiveLanguage.code)
+        languageCode = ActiveLanguage.code
+        catalog = ContentLibrary.load(pack)
         // If the remembered language has no profile but another does (a restored phone, say), use that one.
         if profile == nil, let other = profiles.first {
             ActiveLanguage.set(other.languageCode)
@@ -259,7 +284,9 @@ final class AppModel {
     // MARK: - Onboarding
 
     func completeOnboarding(with draft: OnboardingDraft) {
-        // The language chosen in onboarding becomes the one being learned.
+        // The language chosen in onboarding becomes the one being learned. An "Other language" is made
+        // known by its name first.
+        if draft.isCustomLanguage { LanguagePack.register(draft.pack) }
         ActiveLanguage.set(draft.languageCode)
         languageCode = ActiveLanguage.code
         catalog = ContentLibrary.load(pack)
@@ -356,7 +383,9 @@ final class AppModel {
         if let key = file.gemini?.groqAPIKey, !key.isEmpty { GroqKey.save(key) }
         // Version 2 lists every language's profile; version 1 has the one (Spanish) profile.
         for data in file.profiles ?? [file.profile] {
-            context.insert(data.makeProfile())
+            let profile = data.makeProfile()
+            context.insert(profile)
+            if LanguagePack.isCustom(profile.languageCode) { LanguagePack.register(profile.pack) }
         }
         ActiveLanguage.set(file.activeLanguage ?? file.profile.language ?? LanguagePack.defaultCode)
         languageCode = ActiveLanguage.code

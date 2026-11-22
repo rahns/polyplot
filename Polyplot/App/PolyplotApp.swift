@@ -124,11 +124,15 @@ struct MainTabView: View {
             Tab("Mistakes", systemImage: "rectangle.stack.fill", value: 2) {
                 NavigationStack { MistakeDeckView() }
             }
-            Tab("Library", systemImage: "books.vertical.fill", value: 3) { LibraryView() }
+            // Suggestions are lists made for each built-in language; an "Other language" has none.
+            if !model.pack.isCustom {
+                Tab("Library", systemImage: "books.vertical.fill", value: 3) { LibraryView() }
+            }
             Tab("Settings", systemImage: "gearshape.fill", value: 4) { SettingsView() }
         }
         // A widget tap (polyplot://today or polyplot://plan) brings up the Plot tab, which pushes Today.
         .onChange(of: model.todayRequests) { tab = 0 }
+        .onChange(of: model.languageCode) { if model.pack.isCustom && tab == 3 { tab = 0 } }
         // Big moments play over whichever tab is showing (a task can be finished from the Live Activity).
         .overlay {
             ZStack {

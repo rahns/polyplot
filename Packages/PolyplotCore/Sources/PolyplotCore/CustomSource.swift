@@ -38,4 +38,14 @@ public struct CustomSource: Codable, Equatable, Hashable, Sendable, Identifiable
     public var isActive: Bool {
         isEnabled && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    /// The study types in the order an "Other language" asks for them: listening, speaking & writing,
+    /// fluency practice, grammar & vocab.
+    public static let setupOrder: [Strand] = [.input, .output, .fluency, .languageFocused]
+
+    /// The study types (in `setupOrder`) with no switched-on, named source: an "Other language" plan
+    /// has nothing to put there.
+    public static func missingStrands(_ sources: [CustomSource]) -> [Strand] {
+        setupOrder.filter { strand in !sources.contains { $0.isActive && $0.strand == strand } }
+    }
 }

@@ -14,7 +14,27 @@ final class OnboardingDraft {
             sources = Set(pack.roles)
         }
     }
-    var pack: LanguagePack { LanguagePack.pack(for: languageCode) }
+    /// The language's pack. An "Other language" is built from the name and emoji typed so far.
+    var pack: LanguagePack {
+        isCustomLanguage ? .custom(code: languageCode, name: customLanguageName, flag: customLanguageFlag) : LanguagePack.pack(for: languageCode)
+    }
+
+    /// "Other language": a language Polyplot has no pack for, planned only from the learner's own sources.
+    var isCustomLanguage: Bool { LanguagePack.isCustom(languageCode) }
+    var customLanguageName = "" { didSet { useCustomPack() } }
+    var customLanguageFlag = LanguagePack.defaultCustomFlag { didSet { useCustomPack() } }
+    /// The learner's own sources for an "Other language", added during setup.
+    var customSources: [CustomSource] = []
+    /// An "Other language" can keep Polyplot's research-based split for each level or start with its own.
+    var usesOwnBalance = false
+    var ownBalance = StrandBalance(band: .a2_1)
+
+    /// Keeps the app's wording ("I'm completely new to Welsh") on the name being typed.
+    private func useCustomPack() {
+        guard isCustomLanguage else { return }
+        LanguagePack.register(pack)
+        ActiveLanguage.use(languageCode)
+    }
 
     var name = ""
     var goal = "B2"
@@ -109,5 +129,11 @@ final class OnboardingDraft {
         profile.reminderMinute = calendar.component(.minute, from: reminderTime)
         profile.weeklyGoalMinutes = weeklyGoalMinutes
         profile.weekStartsOnSunday = weekStartsOnSunday
+        if isCustomLanguage {
+            profile.customLanguageName = customLanguageName.trimmingCharacters(in: .whitespacesAndNewlines)
+            profile.customLanguageFlag = customLanguageFlag
+            profile.customSources = customSources
+            profile.strandBalance = usesOwnBalance ? ownBalance : nil
+        }
     }
 }

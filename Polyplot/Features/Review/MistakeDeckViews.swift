@@ -144,14 +144,16 @@ struct MistakeDeckView: View {
                 }
                 .disabled(dueCount == 0)
             } footer: {
-                Text("Mistakes from your writing are added automatically. Add your \(ActiveLanguage.pack.sources[.exchange]?.shortName ?? "exchange") partner's corrections with +.")
+                Text(ActiveLanguage.pack.sources[.exchange].map { "Mistakes from your writing are added automatically. Add your \($0.shortName) partner's corrections with +." }
+                     ?? "Add corrections from a tutor, a partner or your own checking with +, and review them here.")
             }
             if cards.isEmpty {
                 Section {
                     ContentUnavailableView {
                         Label("No cards yet", systemImage: "rectangle.stack")
                     } description: {
-                        Text("When a writing task is corrected, each mistake becomes a card here. Tap + to add a correction from your \(ActiveLanguage.pack.sources[.exchange]?.shortName ?? "exchange") partner.")
+                        Text(ActiveLanguage.pack.sources[.exchange].map { "When a writing task is corrected, each mistake becomes a card here. Tap + to add a correction from your \($0.shortName) partner." }
+                             ?? "Tap + to add a correction, from a tutor, a partner or your own checking. Each one becomes a card that comes back just before you'd forget it.")
                     }
                 }
             }

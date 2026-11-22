@@ -97,6 +97,8 @@ extension Strand {
     var detail: String {
         // Named after the sources of the language being learned.
         let pack = ActiveLanguage.pack
+        // An "Other language" has only the learner's own sources.
+        if pack.isCustom { return ownSourceExpectation }
         func names(_ roles: [SourceKind]) -> [String] { roles.compactMap { pack.sources[$0]?.shortName } }
         switch self {
         case .input: return ([pack.sources[.gradedVideo]?.name].compactMap { $0 } + names([.learnerSeries]) + ["shows and podcasts"]).joined(separator: ", ")
@@ -105,6 +107,16 @@ extension Strand {
             let sources = names([.audioCourse, .drillApp])
             return sources.isEmpty ? "The mistake deck" : sources.joined(separator: ", ") + " and the mistake deck"
         case .fluency: return "Easy videos, quick writes and 4-3-2 talks: using what you know, faster"
+        }
+    }
+
+    /// What a source of this type is for, in a sentence: shown when adding the learner's own sources.
+    var ownSourceExpectation: String {
+        switch self {
+        case .input: "Podcasts, shows, videos or audiobooks you mostly understand without pausing. The biggest part of every plan."
+        case .output: "Where you produce the language: a tutor, a conversation partner, voice messages or a journal."
+        case .fluency: "Easy material at full speed: things well below your level, rereading, retelling a story. It makes what you know come quicker."
+        case .languageFocused: "Deliberate study: a course, a textbook, a grammar or vocabulary app, flashcards."
         }
     }
 }
