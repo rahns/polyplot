@@ -41,7 +41,8 @@ import Testing
         #expect(pack.drill == LanguagePack.spanish.drill)
         #expect(pack.sources[.exchange]?.what.contains("Welsh") == true)
         #expect(pack.phrases == Phrasebook.english)
-        #expect(pack.levels == LanguagePack.spanish.levels)
+        // French's hours, a little above Spanish's: an added language is more likely to be a harder one.
+        #expect(pack.levels == LanguagePack.french.levels)
         // Checked only by AI, told the learner's name for the language; never by the basic checker.
         #expect(pack.tutor.languageToolCode == nil && !pack.tutor.allowsBasicChecker)
         #expect(LanguagePack.spanish.tutor.allowsBasicChecker && LanguagePack.french.tutor.allowsBasicChecker)

@@ -20,8 +20,9 @@ extension LanguagePack {
     /// any language: Duolingo (as for Spanish, a daily warm-up), a Tandem/HelloTalk exchange partner, and
     /// Polyplot's own writing, checked by AI under the language's name (no basic checker). Everything else
     /// comes from the learner's own sources (`CustomSource`), plus the app's extras (mistake review, travel missions).
-    /// Its wording is English, since Polyplot doesn't know the language's words; its level hours are
-    /// Spanish's, the best-documented roadmap there is.
+    /// Its wording is English, since Polyplot doesn't know the language's words. Its level hours are French's
+    /// (Spanish's plus 15%): Spanish is one of the quickest languages for English speakers, and a language
+    /// added this way is more likely to be on the harder side.
     /// See docs/09-multi-language.md §9.10.
     public static func custom(code: String, name: String, flag: String) -> LanguagePack {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -32,7 +33,7 @@ extension LanguagePack {
             nativeName: shown,
             flag: flag.isEmpty ? defaultCustomFlag : flag,
             localeIdentifier: "en",
-            levels: spanish.levels,
+            levels: french.levels,
             sources: [.drillApp: SourceInfo(
                 name: "Duolingo",
                 role: "Short daily warm-up",
