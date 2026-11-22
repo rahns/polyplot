@@ -160,15 +160,7 @@ struct SettingsView: View {
         } footer: {
             Text("Your level goal, weekly minutes and target date. Change the weekly goal and the date follows, or the other way round.")
         }
-        Section {
-            NavigationLink {
-                LevelSettingsView()
-            } label: {
-                LabeledContent("Level & training hours", value: "\(profile.band.rawValue) · \(Int(model.trainingHours.rounded())) h")
-            }
-        } footer: {
-            Text("If your level or hours are off, set them by hand. You'll see what changes before anything does.")
-        }
+
         Section {
             NavigationLink {
                 LessonSettingsView()
@@ -443,7 +435,8 @@ struct SettingsView: View {
         }
         Section {
             NavigationLink("Credits") { CreditsView() }
-            NavigationLink("Diagnostics") { DiagnosticsView() }
+            // Changes that reshape plans or are for troubleshooting, behind a warning.
+            NavigationLink("Advanced") { AdvancedSettingsView() }
         } footer: {
             VStack(spacing: 4) {
                 Text("Polyplot \(DiagnosticsModel.appVersion)")
