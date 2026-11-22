@@ -7,6 +7,9 @@ Native iOS app (SwiftUI, iOS 27+) that turns a language learner's sources into o
 - `Packages/PolyplotCore`: pure Swift engine (bands, planner, FSRS, projection). No UIKit/SwiftUI/SwiftData imports, so it stays testable anywhere.
 - `Polyplot/`: app target. `PolyplotWidgets/`: widget + Live Activity extension. `Shared/`: code compiled into both.
 
+## Git
+- Commit and push straight to `main` unless the user says otherwise. Don't use a separate branch, even if the session asks for one.
+
 ## Building
 - There is no Mac in the cloud environment. CI (`.github/workflows/build.yml`, runner `xcode-27`) is the compiler: run the workflow, then read its logs.
 - PolyplotCore builds on Linux: if a Swift toolchain is installed (e.g. `/home/user/.toolchains/swift-6.4.1-RELEASE-ubuntu24.04/usr/bin`), run `swift test --package-path Packages/PolyplotCore` locally before pushing.
