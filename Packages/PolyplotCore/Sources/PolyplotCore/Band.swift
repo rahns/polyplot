@@ -70,3 +70,32 @@ extension Band {
     }
 }
 
+
+extension Band {
+    /// What a learner at this level can roughly do, in a line, for estimating where you are (onboarding's
+    /// "Not sure?" list). Language-neutral, like the can-do statements.
+    public var summary: String {
+        switch self {
+        case .a1_1: "Just starting: a few words and phrases at most."
+        case .a1_2: "Greetings, numbers and simple questions about yourself. You catch single words when people speak slowly."
+        case .a2_1: "Short, simple conversations about familiar things, with help. You follow slow, clear speech, especially with pictures."
+        case .a2_2: "Shopping, directions and small talk. You get the gist of easy videos made for learners."
+        case .b1_1: "You follow most of a conversation on familiar topics and can talk about your day, plans and experiences."
+        case .b1_2: "Learner shows are easy and native ones are possible with effort. You can explain what you think and why."
+        case .b2_1: "You follow most native speech on familiar topics, and hold your own in a discussion."
+        case .b2_2: "You understand most native content, fast speech included, and speak fluently on most topics."
+        }
+    }
+}
+
+extension LevelScale {
+    /// Roughly how many hours of listening before Polyplot put someone in the middle of `band`: halfway to the
+    /// next level's training hours (a little past the start at the last level), converted to listening at
+    /// the plan's listening share and rounded to 10. For onboarding's "Not sure?" list.
+    public func typicalListeningHours(for band: Band) -> Int {
+        let start = threshold(band)
+        let end = band.next.map(threshold) ?? start * 1.2
+        let listening = (start + end) / 2 * Band.listeningShare
+        return Int((listening / 10).rounded()) * 10
+    }
+}

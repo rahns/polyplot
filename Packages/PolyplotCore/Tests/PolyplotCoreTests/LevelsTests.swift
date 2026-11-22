@@ -114,3 +114,18 @@ import Testing
         #expect(Band.listeningBaseline(forTrainingHours: logged, loggedHours: logged) == 0)
     }
 }
+
+@Suite struct EstimatingHoursTests {
+    /// Onboarding's "Not sure?" list: picking a level gives hours that place you at that level.
+    @Test(arguments: LanguagePack.all)
+    func typicalHoursPlaceYouAtThatLevel(pack: LanguagePack) {
+        var previous = -1
+        for band in Band.allCases {
+            let hours = pack.levels.typicalListeningHours(for: band)
+            #expect(pack.levels.band(forHours: Band.trainingHours(fromListening: Double(hours))) == band, "\(pack.code) \(band.rawValue): \(hours) h")
+            #expect(hours > previous || band == .a1_1)
+            previous = hours
+            #expect(!band.summary.isEmpty)
+        }
+    }
+}

@@ -26,6 +26,8 @@ struct OnboardingView: View {
     @State private var confirmingMissingTypes = false
     /// Scrolls the step to a part of it that's below the screen (the classes step's "Each day").
     @State private var scrollTarget: String?
+    /// The hours step's "Not sure?" list of levels, for learners with no app counting their hours.
+    @State private var showingLevelGuide = false
 
     enum Step: Int, CaseIterable {
         // The goal comes after placement, so the weekly goal and target date can be worked out from your hours.
@@ -774,6 +776,7 @@ struct OnboardingView: View {
                     RaisedCard(accent: Palette.coral) {
                         NumberStepper(title: "Hours of \(pack.name) you've listened to or watched (roughly)", value: $draft.otherListeningHours, range: 0...3000, step: 10)
                     }
+                    levelGuide(pack)
                 }
                 if draft.sources.contains(.audioCourse), let course = pack.course {
                     RaisedCard(accent: Palette.leaf) {
@@ -799,6 +802,66 @@ struct OnboardingView: View {
                             NumberStepper(title: "Episodes watched", value: $draft.extraEpisodesWatched, range: 0...series.episodes, step: 1)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// "Not sure?": each level with roughly the listening hours it takes in this language and what you can do
+    /// there. Tapping one sets the hours to it; the can-do questions next fine-tune the placement either way.
+    private func levelGuide(_ pack: LanguagePack) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.snappy) { showingLevelGuide.toggle() }
+            } label: {
+                HStack {
+                    Label("Not sure? Pick the level that sounds most like you", systemImage: "questionmark.circle.fill")
+                        .font(.rounded(.subheadline, weight: .bold))
+                        .foregroundStyle(Palette.sky)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Palette.secondaryText)
+                        .rotationEffect(.degrees(showingLevelGuide ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if showingLevelGuide {
+                Text("Count anything you mostly listened to: shows, podcasts, videos, classes, conversations. The can-do questions next fine-tune where you start.")
+                    .font(.rounded(.caption, weight: .semibold))
+                    .foregroundStyle(Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(Band.allCases.filter { $0 > .a1_1 }, id: \.self) { band in
+                    let hours = pack.levels.typicalListeningHours(for: band)
+                    let chosen = draft.otherListeningHours == hours
+                    Button {
+                        draft.otherListeningHours = hours
+                    } label: {
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(band.rawValue) \(pack.levelName(band))")
+                                    .font(.rounded(.subheadline, weight: .heavy))
+                                    .foregroundStyle(Palette.ink)
+                                Text(band.summary)
+                                    .font(.rounded(.caption, weight: .medium))
+                                    .foregroundStyle(Palette.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("≈ \(hours) h")
+                                .font(.rounded(.subheadline, weight: .black))
+                                .foregroundStyle(chosen ? Palette.leaf : Palette.ink)
+                                .monospacedDigit()
+                        }
+                        .padding(12)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(chosen ? Palette.leaf.opacity(0.15) : Palette.card))
+                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(chosen ? Palette.leaf : .clear, lineWidth: 2))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(band.rawValue), about \(hours) hours. \(band.summary)")
+                    .sensoryFeedback(.selection, trigger: chosen)
                 }
             }
         }

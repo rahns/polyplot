@@ -77,7 +77,7 @@ The first screen also offers "Restore from a backup". Without a backup, onboardi
    - Language Transfer: last finished track (0–90)
    - Duolingo: section and unit
    - Extra en Español: episodes watched (0–13)
-   - Not using Dreaming Spanish: estimated hours of listening in the language
+   - Not using Dreaming Spanish: estimated hours of listening in the language, with **"Not sure? Pick the level that sounds most like you"** under it. It opens a list of levels from A1.2 to B2.2, each with its name, a line on what you can do there (`Band.summary`: "Shopping, directions and small talk. You get the gist of easy videos made for learners.") and roughly how many hours of listening it takes in that language (`LevelScale.typicalListeningHours`: halfway to the next level, as listening, rounded to 10; Spanish A2.2 ≈ 260 h). Tapping one sets the hours to it; a note says to count anything mostly listened to, and that the can-do questions next fine-tune where you start.
 5. Can-do check: 10 statements, one at a time, "¡Sí!" / "Todavía no" (French: "Oui !" / "Pas encore"). 5 come from the band the hours point to and 5 from the next band, interleaved. Placement uses the same thresholds as §2.1 scaled to 5 (≥ 4/5 of the next band → up, < 3/5 of your own → down).
 6. Placement reveal: band badge with the reasoning in one line ("154 hours of listening (≈ 280 training hours) and 7 of 10 can-dos").
 7. Goal: the same goal editor as Settings → Goal (below). It comes after placement so the date can be worked out from the learner's hours; the date starts where the default 150 min a week leads.
