@@ -108,7 +108,7 @@ struct OnboardingView: View {
     private static let builtIns: [(role: SourceKind, strand: Strand, title: String, subtitle: (String) -> String)] = [
         (.exchange, .output, "Tandem/HelloTalk partner", { "Messages, then voice notes and calls, with a native \($0) speaker" }),
         (.writing, .output, "Polyplot's writing tasks", { "Guided writing in \($0), checked by AI with your own free key" }),
-        (.drillApp, .languageFocused, "Duolingo", { "A short daily warm-up, if Duolingo teaches \($0)" }),
+        (.drillApp, .languageFocused, "Duolingo", { "A short daily warm-up, if Duolingo teaches \($0). Add another grammar & vocab source too, such as a textbook or grammar lessons on YouTube: a few minutes of Duolingo isn't enough on its own." }),
     ]
 
     /// "No source for fluency practice or grammar & vocab".
@@ -379,6 +379,17 @@ struct OnboardingView: View {
                     .font(.rounded(.subheadline, weight: .medium))
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
+                // Listening matters most: about half of every plan, and there's no built-in source for it here.
+                if strand == .input {
+                    Label("The most important type: listening makes up about half of every plan, and understanding lots of \(draft.pack.name) is what moves your level most. Add at least one listening source.",
+                          systemImage: "star.fill")
+                        .font(.rounded(.caption, weight: .bold))
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(strand.color.opacity(0.15)))
+                }
                 ForEach(added) { source in
                     HStack(spacing: 10) {
                         Button {
