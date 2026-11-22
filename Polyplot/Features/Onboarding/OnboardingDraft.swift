@@ -58,8 +58,10 @@ final class OnboardingDraft {
     /// Answers to the can-do statements, keyed by statement.
     var canDoAnswers: [String: Bool] = [:]
 
-    /// Classes or a tutor on set days (Settings → Classes/Tutoring); no days for none, which is fine.
+    /// Classes or a tutor on set days (Settings → Classes/Tutoring); empty for none.
     var lessonSchedule = LessonSchedule()
+    /// The learner said they have classes or a tutor, so the days and length are asked.
+    var hasLessons = false
 
     var reminderEnabled = true
     var reminderTime = Calendar.current.date(from: DateComponents(hour: 8, minute: 30)) ?? .now
@@ -132,7 +134,7 @@ final class OnboardingDraft {
         profile.reminderMinute = calendar.component(.minute, from: reminderTime)
         profile.weeklyGoalMinutes = weeklyGoalMinutes
         profile.weekStartsOnSunday = weekStartsOnSunday
-        profile.lessonSchedule = lessonSchedule
+        profile.lessonSchedule = hasLessons ? lessonSchedule : LessonSchedule()
         if isCustomLanguage {
             profile.customLanguageName = customLanguageName.trimmingCharacters(in: .whitespacesAndNewlines)
             profile.customLanguageFlag = customLanguageFlag
