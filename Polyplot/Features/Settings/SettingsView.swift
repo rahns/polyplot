@@ -59,12 +59,12 @@ struct SettingsView: View {
                 model.setLanguage(code == Self.newCustomLanguageTag ? LanguagePack.newCustomCode() : code, announce: true)
             })) {
                 ForEach(LanguagePack.all) { pack in
-                    Text(pack.name).tag(pack.code)
+                    Text("\(pack.flag) \(pack.name)").tag(pack.code)
                 }
                 ForEach(model.profiles.filter { LanguagePack.isCustom($0.languageCode) }, id: \.languageCode) { custom in
                     Text("\(custom.pack.flag) \(custom.pack.name)").tag(custom.languageCode)
                 }
-                Text("Other language…").tag(Self.newCustomLanguageTag)
+                Text("\(LanguagePack.defaultCustomFlag) Other language…").tag(Self.newCustomLanguageTag)
             }
             if profile.pack.isCustom {
                 TextField("Name", text: Binding(get: { profile.customLanguageName }, set: { model.renameCustomLanguage(name: $0) }))
