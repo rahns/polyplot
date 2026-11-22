@@ -13,6 +13,7 @@ Native iOS app (SwiftUI, iOS 27+) that turns a language learner's sources into o
 ## Building
 - There is no Mac in the cloud environment. CI (`.github/workflows/build.yml`, runner `xcode-27`) is the compiler: run the workflow, then read its logs.
 - PolyplotCore builds on Linux: if a Swift toolchain is installed (e.g. `/home/user/.toolchains/swift-6.4.1-RELEASE-ubuntu24.04/usr/bin`), run `swift test --package-path Packages/PolyplotCore` locally before pushing.
+- After starting a build, check its status about once a minute (from ~90 s in): builds take about 2–3 minutes, so don't wait 4 minutes before the first check.
 - **Only start a build when the user says so.** Pushing to `main` doesn't build; trigger the `Build` workflow manually (workflow_dispatch) when asked.
 - CI runs `swift test` on PolyplotCore, then archives an unsigned IPA, fake-signs it with `ldid` using the entitlements files, and uploads just the IPA (unzipped, no entitlements files) as an artifact. Tags `v*` publish a release.
 
