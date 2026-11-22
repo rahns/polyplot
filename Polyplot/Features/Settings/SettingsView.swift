@@ -155,7 +155,7 @@ struct SettingsView: View {
                 .disabled(profile.speakingStage < .voiceNotes)
             }
         } header: {
-            Text("Practice")
+            Text("Plan options")
         } footer: {
             if profile.pack.has(.exchange) {
                 Text("Voice notes and calls switch on by themselves as you progress; switch one on early if you feel ready. Switched off, it stays off.")
