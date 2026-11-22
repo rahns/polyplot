@@ -24,6 +24,8 @@ struct OnboardingView: View {
     /// "Other language": the source being added or edited, and the warning about types left empty.
     @State private var editingSource: CustomSource?
     @State private var confirmingMissingTypes = false
+    /// Scrolls the step to a part of it that's below the screen (the classes step's "Each day").
+    @State private var scrollTarget: String?
 
     enum Step: Int, CaseIterable {
         // The goal comes after placement, so the weekly goal and target date can be worked out from your hours.
@@ -36,16 +38,25 @@ struct OnboardingView: View {
             if step != .welcome {
                 header
             }
-            ScrollView {
-                content
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .id(step)
-                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                            removal: .move(edge: .leading).combined(with: .opacity)))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    content
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(step)
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                                removal: .move(edge: .leading).combined(with: .opacity)))
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                // New options appearing below the screen flash the scroll bar, so it's clear there's more.
+                .scrollIndicatorsFlash(trigger: draft.lessonSchedule.days.count)
+                .onChange(of: scrollTarget) { _, target in
+                    guard let target else { return }
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.9)) { proxy.scrollTo(target, anchor: .top) }
+                    scrollTarget = nil
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
             footer
         }
         .background(Palette.background.ignoresSafeArea())
@@ -625,6 +636,19 @@ struct OnboardingView: View {
                         }
                     }
                 }
+                // With two or more days, each can have its own length and kind further down: say so, and go there on a tap.
+                if draft.lessonSchedule.days.count > 1 {
+                    Button {
+                        scrollTarget = "eachDay"
+                    } label: {
+                        Label("Different days, different lengths or kinds? Set each day below", systemImage: "arrow.down.circle.fill")
+                            .font(.rounded(.subheadline, weight: .bold))
+                            .foregroundStyle(Palette.sky)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.opacity)
+                }
                 RaisedCard {
                     NumberStepper(title: "Usual length (min)", value: $draft.lessonSchedule.usualMinutes, range: 15...180, step: 5)
                 }
@@ -647,6 +671,7 @@ struct OnboardingView: View {
                     Text("Each day")
                         .font(.rounded(.headline, weight: .heavy))
                         .foregroundStyle(Palette.ink)
+                        .id("eachDay")
                     Text("Give a day its own length or kind, e.g. a longer speaking class on Tuesdays and a shorter grammar session on Thursdays.")
                         .font(.rounded(.caption, weight: .semibold))
                         .foregroundStyle(Palette.secondaryText)
