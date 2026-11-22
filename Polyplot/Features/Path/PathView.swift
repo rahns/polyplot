@@ -807,6 +807,7 @@ struct StartBubble: View {
 struct DaySummarySheet: View {
     let date: Date
     @Environment(AppModel.self) private var model
+    @State private var showingDeletedNote = false
 
     var body: some View {
         let plan = model.session(for: date)
@@ -869,6 +870,7 @@ struct DaySummarySheet: View {
                     }
                     .onDelete { offsets in
                         withAnimation { for index in offsets { model.deleteWriting(writing[index]) } }
+                        showingDeletedNote = true
                     }
                 } header: {
                     Text("Writing")
@@ -889,6 +891,7 @@ struct DaySummarySheet: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Palette.background)
+        .deletedWritingNote(isShowing: $showingDeletedNote)
     }
 
     /// The colour of the day's dot on the path: green (done), yellow (partial), and so on.

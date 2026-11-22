@@ -8,6 +8,7 @@ import UIKit
 struct WritingHistoryView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmingClear = false
+    @State private var showingDeletedNote = false
 
     var body: some View {
         let entries = model.writingHistory
@@ -30,9 +31,10 @@ struct WritingHistoryView: View {
                         }
                         .onDelete { offsets in
                             for index in offsets { model.deleteWriting(entries[index]) }
+                            showingDeletedNote = true
                         }
                     } footer: {
-                        Text("Swipe one to delete it. Mistake cards made from it stay in the deck.")
+                        Text("Swipe one to delete it. \(WritingHistoryNote.cards)")
                     }
                 }
             }
@@ -56,8 +58,9 @@ struct WritingHistoryView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Every piece of \(model.pack.name) writing and its feedback will be deleted. This can't be undone. Mistake cards made from them stay.")
+            Text("Every piece of \(model.pack.name) writing and its feedback will be deleted. This can't be undone. \(WritingHistoryNote.cards)")
         }
+        .deletedWritingNote(isShowing: $showingDeletedNote)
     }
 }
 
@@ -100,11 +103,15 @@ struct WritingHistoryRow: View {
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text(entry.text)
-                .font(.rounded(.body, weight: .medium))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
+            HStack(alignment: .top, spacing: 8) {
+                Text(entry.text)
+                    .font(.rounded(.body, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                copyButton("writing", entry.text, label: "Copy your writing")
+            }
             if let feedback {
                 feedbackView(feedback)
             } else {
@@ -115,36 +122,31 @@ struct WritingHistoryRow: View {
             if !entry.rewrite.isEmpty {
                 section("Your rewrite", entry.rewrite, Palette.leaf)
             }
-            HStack(spacing: 8) {
-                copyButton("Copy my writing", entry.text)
-                if let native = feedback?.naturalRewrite, !native.isEmpty {
-                    copyButton("Copy native version", native)
-                }
-            }
         }
         .padding(.vertical, 6)
     }
 
-    /// Puts `text` on the clipboard. Borderless, so in a list only the button reacts, not the whole row.
-    private func copyButton(_ title: String, _ text: String) -> some View {
+    /// A copy icon that puts `text` on the clipboard and turns into a tick for a moment. Borderless, so in
+    /// a list only the button reacts, not the whole row.
+    private func copyButton(_ id: String, _ text: String, label: String) -> some View {
         Button {
             UIPasteboard.general.string = text
-            withAnimation(.snappy) { copied = title }
+            withAnimation(.snappy) { copied = id }
             Task {
                 try? await Task.sleep(for: .seconds(1.5))
-                withAnimation(.snappy) { if copied == title { copied = nil } }
+                withAnimation(.snappy) { if copied == id { copied = nil } }
             }
         } label: {
-            Label(copied == title ? "Copied" : title, systemImage: copied == title ? "checkmark" : "doc.on.doc")
-                .font(.rounded(.caption, weight: .heavy))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Palette.lilac))
+            Image(systemName: copied == id ? "checkmark" : "doc.on.doc")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(copied == id ? Palette.leaf : Palette.secondaryText)
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
                 .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(.borderless)
-        .foregroundStyle(Palette.ink)
-        .sensoryFeedback(.success, trigger: copied == title)
+        .accessibilityLabel(copied == id ? "Copied" : label)
+        .sensoryFeedback(.success, trigger: copied == id)
     }
 
     /// "42.5 training hours · A2.1 Explorer"; "≈" when it was worked out afterwards.
@@ -172,7 +174,7 @@ struct WritingHistoryRow: View {
             }
         }
         if !feedback.naturalRewrite.isEmpty {
-            section("How a native speaker might say it", feedback.naturalRewrite, Palette.sky)
+            section("How a native speaker might say it", feedback.naturalRewrite, Palette.sky, copy: "Copy the native version")
         }
         if !feedback.strengths.isEmpty {
             section("What went well", feedback.strengths.map { "• \($0)" }.joined(separator: "\n"), Palette.sun)
@@ -182,15 +184,50 @@ struct WritingHistoryRow: View {
             .foregroundStyle(Palette.secondaryText)
     }
 
-    private func section(_ title: String, _ text: String, _ color: Color) -> some View {
+    /// A titled block; with `copy`, a copy icon for its text beside the title.
+    private func section(_ title: String, _ text: String, _ color: Color, copy: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.rounded(.subheadline, weight: .heavy))
-                .foregroundStyle(color)
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.rounded(.subheadline, weight: .heavy))
+                    .foregroundStyle(color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let copy { copyButton(title, text, label: copy) }
+            }
             Text(text)
                 .font(.rounded(.subheadline, weight: .medium))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+enum WritingHistoryNote {
+    /// Deleting writing leaves the mistake cards made from it.
+    static let cards = "Snippets of it may still appear in your mistake deck until you delete those cards."
+}
+
+extension View {
+    /// After a piece of writing is swiped away: a note for a few seconds that its mistake cards stay.
+    func deletedWritingNote(isShowing: Binding<Bool>) -> some View {
+        overlay(alignment: .bottom) {
+            if isShowing.wrappedValue {
+                Label("Deleted. \(WritingHistoryNote.cards)", systemImage: "trash")
+                    .font(.rounded(.footnote, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card).shadow(radius: 6, y: 2))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(for: .seconds(4))
+                        withAnimation(.snappy) { isShowing.wrappedValue = false }
+                    }
+            }
+        }
+        .animation(.snappy, value: isShowing.wrappedValue)
     }
 }

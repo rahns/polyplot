@@ -279,7 +279,14 @@ struct SettingsView: View {
         }
         }
         Section {
-            Toggle("Keep writing history", isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) }))
+            Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Keep writing history")
+                    Text("Deleted writing's snippets may still appear in the mistake deck until deleted there")
+                        .font(.rounded(.caption, weight: .medium))
+                        .foregroundStyle(Palette.secondaryText)
+                }
+            }
             // The page is always there, so what's already kept can be read, copied or cleared with the toggle off.
             NavigationLink {
                 WritingHistoryView()
