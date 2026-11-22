@@ -516,7 +516,6 @@ struct TaskCardView: View {
     let onStart: () -> Void
     let onSkip: () -> Void
     let onUndo: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let kind = task.task
@@ -536,7 +535,7 @@ struct TaskCardView: View {
                             .background(Circle().fill(color.edge()).offset(y: 3).opacity(finished ? 0 : 1))
                             .contentTransition(.symbolEffect(.replace))
                             // Finishing a task flips its icon over to the tick.
-                            .rotation3DEffect(.degrees(task.status == .done && !reduceMotion ? 360 : 0), axis: (x: 0, y: 1, z: 0))
+                            .rotation3DEffect(.degrees(task.status == .done ? 360 : 0), axis: (x: 0, y: 1, z: 0))
                     }
                     .buttonStyle(.plain)
                     // Not .disabled: that fades the icon. It only reacts once the task is done or skipped (undo).

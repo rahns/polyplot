@@ -420,7 +420,6 @@ struct UnitBanner: View {
     /// The current week while travel mode is on: a small "Travel mode" tag.
     var travelMode = false
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// During the flip: show the old (unfinished) side until it's edge-on.
     @State private var showingOldSide = false
     @State private var angle: Double = 0
@@ -512,15 +511,13 @@ struct UnitBanner: View {
     }
 
     private func flip() async {
-        if !reduceMotion {
-            showingOldSide = true
-            withAnimation(.easeIn(duration: 0.25)) { angle = 90 }
-            try? await Task.sleep(for: .milliseconds(250))
-            showingOldSide = false
-            angle = -90
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) { angle = 0 }
-            try? await Task.sleep(for: .milliseconds(350))
-        }
+        showingOldSide = true
+        withAnimation(.easeIn(duration: 0.25)) { angle = 90 }
+        try? await Task.sleep(for: .milliseconds(250))
+        showingOldSide = false
+        angle = -90
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) { angle = 0 }
+        try? await Task.sleep(for: .milliseconds(350))
         // The seal stamps down.
         sealScale = 2.2
         withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { sealScale = 1 }
@@ -539,7 +536,6 @@ struct PathNodeView: View {
     var date: Date?
     var minutes = 0
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let edge: CGFloat = 6
 
@@ -597,7 +593,7 @@ struct PathNodeView: View {
                             .rotationEffect(.degrees(Double(index) * 60))
                     }
                 }
-                .phaseAnimator(reduceMotion ? [false] : [false, true]) { sparkles, phase in
+                .phaseAnimator([false, true]) { sparkles, phase in
                     sparkles.rotationEffect(.degrees(phase ? 15 : 0))
                 } animation: { _ in .easeInOut(duration: 1.1) }
                 .offset(y: Self.edge / 2)
@@ -609,7 +605,7 @@ struct PathNodeView: View {
                     .stroke(color.opacity(0.35), lineWidth: 6)
                     .frame(width: size + 22, height: size + 22)
                     .offset(y: Self.edge / 2)
-                    .phaseAnimator(reduceMotion ? [false] : [false, true]) { ring, phase in
+                    .phaseAnimator([false, true]) { ring, phase in
                         ring
                             .scaleEffect(phase ? 1.08 : 0.96)
                             .opacity(phase ? 0.3 : 0.9)

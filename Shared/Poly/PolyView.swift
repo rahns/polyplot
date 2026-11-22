@@ -25,7 +25,6 @@ struct PolyView: View {
     /// Travel mode: a big backpacking pack on his back, whatever his mood (sleepy, cheering…).
     var backpack = false
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var taps = 0
     @State private var flipAngle: Double = 0
     @State private var spinAngle: Double = 0
@@ -36,10 +35,10 @@ struct PolyView: View {
     private static var squawks: [String] { ActiveLanguage.phrases.squawks }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             Canvas { context, canvasSize in
-                PolyDrawing.draw(in: &context, size: canvasSize, time: time, mood: mood, still: reduceMotion, backpack: backpack)
+                PolyDrawing.draw(in: &context, size: canvasSize, time: time, mood: mood, still: false, backpack: backpack)
             }
         }
         .frame(width: size, height: size)
@@ -98,7 +97,7 @@ struct PolyView: View {
             }
             KeyframeTrack(\.spin) {
                 LinearKeyframe(0, duration: 0.1)
-                CubicKeyframe(reduceMotion ? 0 : -360, duration: 0.6)
+                CubicKeyframe(-360, duration: 0.6)
             }
             KeyframeTrack(\.scale) {
                 SpringKeyframe(1.15, duration: 0.3)
@@ -108,10 +107,10 @@ struct PolyView: View {
         .accessibilityHidden(true)
     }
 
-    /// A flip, a spin, a hop or a squawk, at random. With Reduce Motion, always the squawk.
+    /// A flip, a spin, a hop or a squawk, at random.
     private func playTrick() {
         taps += 1
-        let trick = reduceMotion ? 3 : Int.random(in: 0..<4)
+        let trick = Int.random(in: 0..<4)
         switch trick {
         case 0: withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { flipAngle += 360 }
         case 1: withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) { spinAngle -= 360 }

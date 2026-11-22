@@ -5,13 +5,12 @@ import SwiftUI
 /// (Settings → Language): Poly swoops in onto a card showing the old language's flag, the card flips to
 /// the new flag, Poly does a loop-de-loop, and "C'est parti !" (or "¡Vamos!") appears in the new language.
 /// After a language is deleted, the old flag vanishes in a puff of smoke instead, and the new one pops in.
-/// About two seconds; a tap ends it early. With Reduce Motion, the new flag simply fades in.
+/// About two seconds; a tap ends it early.
 /// The data underneath switches straight away, so the screen behind is already the new language's.
 struct LanguageSwitchSplash: View {
     let change: AppModel.LanguageSwitch
     let onFinish: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var flipAngle: Double = 0
     @State private var showingNew = false
     @State private var polyIn = false
@@ -97,16 +96,6 @@ struct LanguageSwitchSplash: View {
     }
 
     private func play() async {
-        if reduceMotion {
-            showingNew = true
-            poofed = true
-            newFlagIn = true
-            polyIn = true
-            withAnimation(.easeOut(duration: 0.3)) { textIn = true }
-            try? await Task.sleep(for: .seconds(1.3))
-            finish()
-            return
-        }
         // Poly swoops in.
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { polyIn = true }
         try? await Task.sleep(for: .seconds(0.45))

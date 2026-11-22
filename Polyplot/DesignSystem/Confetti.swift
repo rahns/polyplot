@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// A burst of confetti from the middle of the view whenever `trigger` changes. Skipped with Reduce Motion.
+/// A burst of confetti from the middle of the view whenever `trigger` changes.
 struct ConfettiView: View {
     let trigger: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var startedAt: Date?
     @State private var pieces: [ConfettiPiece] = []
 
@@ -33,7 +32,6 @@ struct ConfettiView: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onChange(of: trigger) { _, _ in
-            guard !reduceMotion else { return }
             pieces = (0..<90).map { _ in ConfettiPiece.random() }
             startedAt = .now
             Task {

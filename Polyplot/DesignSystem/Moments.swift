@@ -2,7 +2,7 @@ import PolyplotCore
 import SwiftUI
 
 // One-off celebration moments (docs/03-experience.md §3.5). Each plays when its trigger changes,
-// after a short delay so a closing task screen doesn't hide it. Reduce Motion swaps motion for fades.
+// after a short delay so a closing task screen doesn't hide it.
 
 /// "+22 min" floating up into the training-hours badge.
 struct TimeFlyUp: View {
@@ -10,7 +10,6 @@ struct TimeFlyUp: View {
     /// Called as the number reaches the badge, so the badge can bounce.
     var onLand: () -> Void = {}
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: AppModel.TimeGain?
     @State private var risen = false
 
@@ -24,7 +23,7 @@ struct TimeFlyUp: View {
                     .padding(.vertical, 5)
                     .background(Capsule().fill(Palette.sky))
                     .background(Capsule().fill(Palette.sky.edge()).offset(y: 3))
-                    .offset(y: risen || reduceMotion ? 0 : 70)
+                    .offset(y: risen ? 0 : 70)
                     .scaleEffect(risen ? 0.7 : 1.1)
                     .opacity(risen ? 0 : 1)
             }
@@ -53,7 +52,6 @@ struct GoalReachedOverlay: View {
     let trigger: Int
     let goal: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var startedAt: Date?
     @State private var bursts: [FireworkBurst] = []
     @State private var showingBanner = false
@@ -62,14 +60,12 @@ struct GoalReachedOverlay: View {
 
     var body: some View {
         ZStack {
-            if !reduceMotion {
-                TimelineView(.animation(paused: startedAt == nil)) { timeline in
-                    Canvas { context, size in
-                        guard let startedAt else { return }
-                        let t = timeline.date.timeIntervalSince(startedAt)
-                        for burst in bursts {
-                            burst.draw(in: &context, size: size, t: t - burst.delay)
-                        }
+            TimelineView(.animation(paused: startedAt == nil)) { timeline in
+                Canvas { context, size in
+                    guard let startedAt else { return }
+                    let t = timeline.date.timeIntervalSince(startedAt)
+                    for burst in bursts {
+                        burst.draw(in: &context, size: size, t: t - burst.delay)
                     }
                 }
             }
@@ -157,7 +153,6 @@ struct FireworkBurst {
 struct StreakMilestoneOverlay: View {
     let milestone: AppModel.StreakMilestone?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: AppModel.StreakMilestone?
     @State private var scale: CGFloat = 0.2
 
@@ -182,7 +177,7 @@ struct StreakMilestoneOverlay: View {
                         .font(.rounded(.headline, weight: .heavy))
                         .foregroundStyle(Palette.secondaryText)
                 }
-                .scaleEffect(reduceMotion ? 1 : scale)
+                .scaleEffect(scale)
                 .transition(.opacity)
             }
         }
@@ -213,7 +208,6 @@ struct StreakMilestoneOverlay: View {
 struct IceShatter: View {
     let trigger: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: Phase = .hidden
 
     enum Phase { case hidden, frozen, shattered }
@@ -247,7 +241,7 @@ struct IceShatter: View {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { phase = .frozen }
                 try? await Task.sleep(for: .milliseconds(900))
                 Haptics.crack()
-                withAnimation(.easeOut(duration: reduceMotion ? 0.3 : 0.6)) { phase = reduceMotion ? .hidden : .shattered }
+                withAnimation(.easeOut(duration: 0.6)) { phase = .shattered }
                 try? await Task.sleep(for: .milliseconds(700))
                 phase = .hidden
             }

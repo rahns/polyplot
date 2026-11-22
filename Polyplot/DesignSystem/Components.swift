@@ -105,7 +105,6 @@ struct ChunkyProgressBar: View {
     /// A light sweep runs along the fill whenever the value goes up.
     var shimmers = false
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Position of the shimmer band, from -0.4 (before the start) to 1.4 (past the end).
     @State private var sweep: CGFloat = -0.4
 
@@ -143,7 +142,7 @@ struct ChunkyProgressBar: View {
         .frame(height: height)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: value)
         .onChange(of: value) { old, new in
-            guard shimmers, new > old, !reduceMotion else { return }
+            guard shimmers, new > old else { return }
             sweep = -0.4
             withAnimation(.easeInOut(duration: 0.9).delay(0.3)) { sweep = 1.4 }
         }
