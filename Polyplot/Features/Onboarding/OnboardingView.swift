@@ -637,13 +637,67 @@ struct OnboardingView: View {
                                    color: TaskKind.lesson(for: type).color) { draft.lessonSchedule.usualType = type }
                     }
                 }
-                Text("It decides which part of your practice it counts toward. All-in-one splits it evenly between speaking & writing, listening and grammar & vocab. Different days, lengths or kinds can be set in Settings → Classes/Tutoring.")
+                Text("It decides which part of your practice it counts toward. All-in-one splits it evenly between speaking & writing, listening and grammar & vocab.")
                     .font(.rounded(.caption, weight: .semibold))
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
+                // With more than one day, any day can have its own length and kind, as in Settings.
+                let chosen = (draft.weekStartsOnSunday ? Array(1...7) : [2, 3, 4, 5, 6, 7, 1]).filter { draft.lessonSchedule.days[$0] != nil }
+                if chosen.count > 1 {
+                    Text("Each day")
+                        .font(.rounded(.headline, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                    Text("Give a day its own length or kind, e.g. a longer speaking class on Tuesdays and a shorter grammar session on Thursdays.")
+                        .font(.rounded(.caption, weight: .semibold))
+                        .foregroundStyle(Palette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(chosen, id: \.self) { weekday in
+                        lessonDayCard(weekday)
+                    }
+                }
             }
         }
         .animation(.snappy, value: draft.hasLessons)
+    }
+
+    /// One lesson day: the usual length and kind, or its own.
+    private func lessonDayCard(_ weekday: Int) -> some View {
+        let schedule = draft.lessonSchedule
+        let day = schedule.days[weekday] ?? .init()
+        let custom = day.minutes != nil || day.type != nil
+        return RaisedCard(accent: TaskKind.lesson(for: day.type ?? schedule.usualType).color) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: Binding(
+                    get: { !custom },
+                    set: { same in
+                        draft.lessonSchedule.days[weekday] = same ? .init() : .init(minutes: schedule.usualMinutes, type: schedule.usualType)
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Calendar.current.weekdaySymbols[weekday - 1])
+                            .font(.rounded(.headline, weight: .heavy))
+                            .foregroundStyle(Palette.ink)
+                        Text(custom ? "Its own length and kind" : "Same as usual: \(schedule.usualMinutes) min · \(TaskCopy.lessonTypeName(schedule.usualType))")
+                            .font(.rounded(.caption, weight: .semibold))
+                            .foregroundStyle(Palette.secondaryText)
+                    }
+                }
+                .tint(Palette.leaf)
+                if custom {
+                    NumberStepper(title: "Length (min)", value: Binding(
+                        get: { draft.lessonSchedule.days[weekday]?.minutes ?? schedule.usualMinutes },
+                        set: { draft.lessonSchedule.days[weekday]?.minutes = $0 }
+                    ), range: 15...180, step: 5)
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 10) {
+                        ForEach(LessonType.allCases, id: \.self) { type in
+                            ChipButton(title: TaskCopy.lessonTypeName(type), isSelected: (day.type ?? schedule.usualType) == type,
+                                       color: TaskKind.lesson(for: type).color) { draft.lessonSchedule.days[weekday]?.type = type }
+                        }
+                    }
+                }
+            }
+        }
+        .animation(.snappy, value: custom)
     }
 
     private var progress: some View {
