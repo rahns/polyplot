@@ -816,41 +816,79 @@ struct DaySummarySheet: View {
         let logs = model.logs
         let minutes = planned.flatMap(\.allLogIDs).compactMap { id in logs.first { $0.id == id }?.minutes }.reduce(0, +)
             + others.reduce(0) { $0 + $1.minutes }
-        VStack(alignment: .leading, spacing: 14) {
-            Text(PathDate.longDay(date))
-                .font(.rounded(.title2, weight: .black))
-                .foregroundStyle(Palette.ink)
-            // The summary matches the day's dot: green says "day complete", yellow says why it isn't (below).
-            let status = nodeStatus
-            let complete = status == .done
-            Text(minutes == 0 ? "Nothing logged that day." : "\(minutes) minutes\(complete ? " · day complete" : "")")
-                .font(.rounded(.headline, weight: .bold))
-                .foregroundStyle(complete ? Palette.leaf : Palette.secondaryText)
-            // A yellow dot: some practice, but less than the weekly goal needed that day.
-            if status == .partial {
-                // Laid out like the task rows below (icon in a 28-point column, 12 points before the text), so they line up.
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Image(systemName: "circle.lefthalf.filled")
-                        .frame(width: 28)
-                    Text("Less time than needed to meet your weekly goal")
-                        .fixedSize(horizontal: false, vertical: true)
+        // The day's writing, with its corrections: swipe one to delete it (Settings → Writing history has them all).
+        let writing = model.writingHistory.filter { model.calendar.isDate($0.date, inSameDayAs: date) }
+        // A list, so the writing can be swiped and a full day scrolls.
+        List {
+            Group {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(PathDate.longDay(date))
+                        .font(.rounded(.title2, weight: .black))
+                        .foregroundStyle(Palette.ink)
+                    // The summary matches the day's dot: green says "day complete", yellow says why it isn't (below).
+                    let status = nodeStatus
+                    let complete = status == .done
+                    Text(minutes == 0 ? "Nothing logged that day." : "\(minutes) minutes\(complete ? " · day complete" : "")")
+                        .font(.rounded(.headline, weight: .bold))
+                        .foregroundStyle(complete ? Palette.leaf : Palette.secondaryText)
+                    // A yellow dot: some practice, but less than the weekly goal needed that day.
+                    if status == .partial {
+                        // Laid out like the task rows below (icon in a 28-point column, 12 points before the text), so they line up.
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .frame(width: 28)
+                            Text("Less time than needed to meet your weekly goal")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(.rounded(.subheadline, weight: .bold))
+                        .foregroundStyle(Palette.sun)
+                    }
                 }
-                .font(.rounded(.subheadline, weight: .bold))
-                .foregroundStyle(Palette.sun)
+                .padding(.top, 8)
+                ForEach(planned) { task in
+                    row(symbol: TaskCopy.symbol(for: task.task), color: task.task.color, title: model.title(for: task),
+                        minutes: model.loggedMinutes(for: task) ?? task.minutesPlanned)
+                }
+                ForEach(others) { log in
+                    row(symbol: log.isBonus ? TaskCopy.otherSymbol(log.task.strand) : TaskCopy.symbol(for: log.task), color: log.task.strand.color,
+                        title: log.isBonus ? "Other: \(TaskCopy.otherName(log.task.strand).lowercased())" : model.title(for: log), minutes: log.minutes)
+                }
             }
-            ForEach(planned) { task in
-                row(symbol: TaskCopy.symbol(for: task.task), color: task.task.color, title: model.title(for: task),
-                    minutes: model.loggedMinutes(for: task) ?? task.minutesPlanned)
-            }
-            ForEach(others) { log in
-                row(symbol: log.isBonus ? TaskCopy.otherSymbol(log.task.strand) : TaskCopy.symbol(for: log.task), color: log.task.strand.color,
-                    title: log.isBonus ? "Other: \(TaskCopy.otherName(log.task.strand).lowercased())" : model.title(for: log), minutes: log.minutes)
+            .listRowInsets(EdgeInsets(top: 7, leading: 24, bottom: 7, trailing: 24))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            if !writing.isEmpty {
+                Section {
+                    ForEach(writing) { entry in
+                        WritingHistoryRow(entry: entry, standing: model.standing(when: entry))
+                            .padding(.horizontal, 6)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 24, bottom: 6, trailing: 24))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card)
+                                .padding(.horizontal, 16).padding(.vertical, 2))
+                    }
+                    .onDelete { offsets in
+                        withAnimation { for index in offsets { model.deleteWriting(writing[index]) } }
+                    }
+                } header: {
+                    Text("Writing")
+                        .font(.rounded(.headline, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                        .textCase(nil)
+                        .padding(.leading, 8)
+                } footer: {
+                    Text("View or delete all previous writing in Settings → Writing history")
+                        .font(.rounded(.caption2, weight: .semibold))
+                        .foregroundStyle(Palette.secondaryText)
+                        .padding(.leading, 8)
+                        .padding(.bottom, 16)
+                }
+                .listSectionSeparator(.hidden)
             }
         }
-        .padding(24)
-        .padding(.top, 8)
-        // Fill the whole sheet, so its background reaches the edges.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Palette.background)
     }
 
     /// The colour of the day's dot on the path: green (done), yellow (partial), and so on.

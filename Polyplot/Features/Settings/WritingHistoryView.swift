@@ -59,7 +59,8 @@ struct WritingHistoryView: View {
 }
 
 /// One finished writing task: when, the hours and level then, the prompt, the text, and its feedback.
-private struct WritingHistoryRow: View {
+/// Also shown in a day's summary on the path (`DaySummarySheet`).
+struct WritingHistoryRow: View {
     let entry: WritingEntry
     let standing: (hours: Double, band: Band, estimated: Bool)
 
