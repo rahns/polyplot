@@ -282,7 +282,7 @@ struct SettingsView: View {
             Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Keep writing history")
-                    Text("Deleted writing's snippets may still appear in the mistake deck until deleted there")
+                    Text("Writing snippets can still appear in the mistake deck when this is off")
                         .font(.rounded(.caption, weight: .medium))
                         .foregroundStyle(Palette.secondaryText)
                 }
