@@ -278,6 +278,23 @@ struct SettingsView: View {
             Text("Polyplot switches these on by itself as your hours and \(profile.pack.sources[.exchange]?.shortName ?? "partner") exchanges grow, and you can go early if you feel ready. Switch one off and it stays off until you switch it back on.")
         }
         }
+        Section {
+            Toggle("Keep writing history", isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) }))
+            if profile.keepsWritingHistory {
+                NavigationLink {
+                    WritingHistoryView()
+                } label: {
+                    let count = model.writingHistory.count
+                    LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
+                }
+            }
+        } header: {
+            Text("Writing history")
+        } footer: {
+            Text(profile.keepsWritingHistory
+                 ? "Every writing task you finish, with its feedback and your hours and level then. It's in your backups."
+                 : "Finished writing isn't kept while this is off. Anything already kept stays until you switch it back on and clear it.")
+        }
         Section("Habit") {
             if profile.pack.has(.drillApp) {
                 Toggle(isOn: binding(get: { profile.alwaysIncludeDuolingo }, set: { profile.alwaysIncludeDuolingo = $0; model.replanTodayIfNotStarted() })) {

@@ -351,7 +351,8 @@ final class AppModel {
             logs: everyLog.map(BackupFile.LogData.init),
             writing: writing.map {
                 BackupFile.WritingData(date: $0.date, task: $0.taskRaw, prompt: $0.prompt, text: $0.text,
-                                       rewrite: $0.rewrite, feedback: $0.feedbackJSON, id: $0.id, language: $0.languageCode)
+                                       rewrite: $0.rewrite, feedback: $0.feedbackJSON, id: $0.id, language: $0.languageCode,
+                                       trainingHours: $0.trainingHours, band: $0.bandRaw)
             },
             cards: cards.map(BackupFile.CardData.init),
             profiles: profiles.map(BackupFile.ProfileData.init),
@@ -399,6 +400,8 @@ final class AppModel {
             restored.feedbackJSON = entry.feedback
             if let id = entry.id { restored.id = id }
             restored.languageCode = entry.language ?? LanguagePack.defaultCode
+            restored.trainingHours = entry.trainingHours
+            restored.bandRaw = entry.band
             context.insert(restored)
         }
         for card in file.cards ?? [] {
@@ -582,6 +585,8 @@ final class AppModel {
     func complete(_ task: PlannedTaskRecord, with completion: Completion) {
         guard let profile else { return }
         let before = streak
+        // Writing history shows the hours as they stood once this task was done.
+        let hoursAfter = trainingHours + Double(completion.minutes) / 60
         // A one-off change of lesson type is logged (and shown) as that type.
         if let lessonType = completion.lessonType, task.task.isLesson { task.taskRaw = TaskKind.lesson(for: lessonType).rawValue }
         // An all-in-one lesson is logged as three equal parts, one per strand it covers.
@@ -611,19 +616,29 @@ final class AppModel {
         }
 
         if let text = completion.writing?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
-            let entry = WritingEntry(date: .now, task: task.task, prompt: task.prompt, text: text)
-            entry.feedbackJSON = completion.feedback.flatMap { try? JSONEncoder().encode($0) }
-            entry.rewrite = completion.rewrite?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            insert(entry)
-            task.writingID = entry.id
-            task.draftText = ""
-            task.draftRewrite = ""
-            task.draftFeedback = nil
+            let writingID: UUID
+            if profile.keepsWritingHistory {
+                let entry = WritingEntry(date: .now, task: task.task, prompt: task.prompt, text: text)
+                entry.feedbackJSON = completion.feedback.flatMap { try? JSONEncoder().encode($0) }
+                entry.rewrite = completion.rewrite?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                entry.trainingHours = hoursAfter
+                entry.bandRaw = profile.band.rawValue
+                insert(entry)
+                writingID = entry.id
+                task.draftText = ""
+                task.draftRewrite = ""
+                task.draftFeedback = nil
+            } else {
+                // Writing history is off: nothing is kept to look back on. The text stays on the task only
+                // (so undo still gets it back), and its cards share an ID so undo still removes them.
+                writingID = UUID()
+            }
+            task.writingID = writingID
             // Every corrected error becomes a mistake-deck card (R7, R11).
             for correction in completion.feedback?.corrections ?? [] {
                 let content = Mistakes.card(from: text, correction: correction)
                 let card = ReviewCard(front: content.front, back: content.back, explanation: content.explanation, origin: "writing")
-                card.writingID = entry.id
+                card.writingID = writingID
                 insert(card)
             }
         }
@@ -943,6 +958,45 @@ final class AppModel {
             return due == 1 ? "1 card due" : "\(due) cards due"
         }
         return TaskCopy.detail(task.detail)
+    }
+
+    // MARK: - Writing history
+
+    /// Every finished writing task kept in the language being learned, most recent first.
+    var writingHistory: [WritingEntry] {
+        _ = revision
+        let code = languageCode
+        return (try? context.fetch(FetchDescriptor<WritingEntry>(predicate: #Predicate { $0.languageCode == code },
+                                                                 sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+    }
+
+    /// Training hours and level when `entry` was written. Older entries didn't record them: the hours are
+    /// worked out from the logs up to then, and the level from those hours (`estimated`).
+    func standing(when entry: WritingEntry) -> (hours: Double, band: Band, estimated: Bool) {
+        if let hours = entry.trainingHours, let band = entry.bandRaw.flatMap(Band.init(rawValue:)) {
+            return (hours, band, false)
+        }
+        let minutes = logs.filter { $0.date <= entry.date }.reduce(0) { $0 + $1.minutes }
+        let hours = entry.trainingHours ?? Band.trainingHours(fromListening: profile?.baselineInputHours ?? 0) + Double(minutes) / 60
+        let band = entry.bandRaw.flatMap(Band.init(rawValue:)) ?? pack.levels.band(forHours: hours)
+        return (hours, band, entry.bandRaw == nil)
+    }
+
+    func deleteWriting(_ entry: WritingEntry) {
+        context.delete(entry)
+        save()
+    }
+
+    /// Settings → Writing history → Clear all history: every kept piece of writing in this language.
+    /// Mistake cards made from them stay.
+    func clearWritingHistory() {
+        writingHistory.forEach(context.delete)
+        save()
+    }
+
+    func setKeepsWritingHistory(_ on: Bool) {
+        profile?.keepsWritingHistory = on
+        save()
     }
 
     // MARK: - Custom sources

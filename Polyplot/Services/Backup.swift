@@ -83,6 +83,8 @@ struct BackupFile: Codable {
         /// Added later: an "Other language"'s name and emoji.
         var customLanguageName: String?
         var customLanguageFlag: String?
+        /// Added later: Settings → Writing history.
+        var keepsWritingHistory: Bool?
         /// Version 2: the language this profile is for. Missing means Spanish.
         var language: String?
     }
@@ -117,6 +119,9 @@ struct BackupFile: Codable {
         var id: UUID?
         /// Version 2. Missing means Spanish.
         var language: String?
+        /// Added later: training hours and level when it was written (Writing history).
+        var trainingHours: Double?
+        var band: String?
     }
 
     struct CardData: Codable {
@@ -250,6 +255,7 @@ extension BackupFile.ProfileData {
             customSources: profile.customSources.isEmpty ? nil : profile.customSources,
             customLanguageName: profile.customLanguageName.isEmpty ? nil : profile.customLanguageName,
             customLanguageFlag: profile.customLanguageFlag.isEmpty ? nil : profile.customLanguageFlag,
+            keepsWritingHistory: profile.keepsWritingHistory,
             language: profile.languageCode
         )
     }
@@ -292,6 +298,7 @@ extension BackupFile.ProfileData {
         profile.customSources = customSources ?? []
         profile.customLanguageName = customLanguageName ?? ""
         profile.customLanguageFlag = customLanguageFlag ?? ""
+        profile.keepsWritingHistory = keepsWritingHistory ?? true
         return profile
     }
 }

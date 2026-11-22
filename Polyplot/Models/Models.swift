@@ -66,6 +66,8 @@ protocol LanguageTagged: AnyObject {
     /// An "Other language" (code "x-…"): the name and emoji the learner gave it. Empty for a built-in language.
     var customLanguageName: String = ""
     var customLanguageFlag: String = ""
+    /// Settings → Writing history: finished writing (with its feedback) is kept to look back on. On by default.
+    var keepsWritingHistory: Bool = true
 
     init() {}
 
@@ -317,6 +319,10 @@ enum TaskStatus: String {
     /// Encoded `CorrectionService.Result`.
     var feedbackJSON: Data?
     var rewrite: String = ""
+    /// The learner's training hours and level when it was written, for Writing history. Nil for writing
+    /// saved before they were recorded (the hours are then worked out from the logs).
+    var trainingHours: Double?
+    var bandRaw: String?
 
     init(date: Date, task: TaskKind, prompt: String, text: String) {
         self.date = date
