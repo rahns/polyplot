@@ -102,3 +102,15 @@ import Testing
         #expect(ComprehensionTuner.suggestion(for: [.lost, .lost], current: 2...10) == 0...8)
     }
 }
+
+@Suite struct ManualHoursTests {
+    /// Settings → Level & training hours sets the hours before Polyplot so the total is what the learner asked for.
+    @Test func baselineGivesTheTotalAskedFor() {
+        let logged = 40.0
+        let baseline = Band.listeningBaseline(forTrainingHours: 300, loggedHours: logged)
+        #expect(abs(Band.trainingHours(fromListening: baseline) + logged - 300) < 0.0001)
+        // Logged practice stays: asking for less than it gives no hours before Polyplot.
+        #expect(Band.listeningBaseline(forTrainingHours: 10, loggedHours: logged) == 0)
+        #expect(Band.listeningBaseline(forTrainingHours: logged, loggedHours: logged) == 0)
+    }
+}

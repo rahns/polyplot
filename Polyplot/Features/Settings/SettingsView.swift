@@ -162,6 +162,15 @@ struct SettingsView: View {
         }
         Section {
             NavigationLink {
+                LevelSettingsView()
+            } label: {
+                LabeledContent("Level & training hours", value: "\(profile.band.rawValue) · \(Int(model.trainingHours.rounded())) h")
+            }
+        } footer: {
+            Text("If your level or hours are off, set them by hand. You'll see what changes before anything does.")
+        }
+        Section {
+            NavigationLink {
                 LessonSettingsView()
             } label: {
                 LabeledContent("Classes/Tutoring", value: profile.lessonSchedule.summary(weekStartsOnSunday: profile.weekStartsOnSunday))

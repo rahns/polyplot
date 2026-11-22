@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 /// Settings → Writing history: every finished writing task in the language being learned, most recent
-/// first, with its feedback and the learner's hours and level when it was written. Swipe one to delete it;
+/// first, as a short preview; tap one for the whole piece with its feedback and the learner's hours and level then. Swipe one to delete it;
 /// ⋯ → Clear all history deletes them all, after a second check. Kept in backups. See docs/03-experience.md "Settings".
 struct WritingHistoryView: View {
     @Environment(AppModel.self) private var model
@@ -26,8 +26,19 @@ struct WritingHistoryView: View {
                     }
                 } else {
                     Section {
+                        // A short preview each; tap for the whole piece and its feedback.
                         ForEach(entries) { entry in
-                            WritingHistoryRow(entry: entry, standing: model.standing(when: entry))
+                            NavigationLink {
+                                ScrollView {
+                                    WritingHistoryRow(entry: entry, standing: model.standing(when: entry))
+                                        .padding(20)
+                                }
+                                .background(Palette.background.ignoresSafeArea())
+                                .navigationTitle(entry.date.formatted(.dateTime.day().month(.abbreviated).year()))
+                                .navigationBarTitleDisplayMode(.inline)
+                            } label: {
+                                WritingHistoryPreview(entry: entry, standing: model.standing(when: entry))
+                            }
                         }
                         .onDelete { offsets in
                             for index in offsets { model.deleteWriting(entries[index]) }
@@ -61,6 +72,51 @@ struct WritingHistoryView: View {
             Text("Every piece of \(model.pack.name) writing and its feedback will be deleted. This can't be undone. \(WritingHistoryNote.cards)")
         }
         .deletedWritingNote(isShowing: $showingDeletedNote)
+    }
+}
+
+/// A list row for one finished writing task: what and when, the hours and level then, the start of the
+/// text, and how the check went.
+private struct WritingHistoryPreview: View {
+    let entry: WritingEntry
+    let standing: (hours: Double, band: Band, estimated: Bool)
+
+    private var kind: TaskKind { TaskKind(rawValue: entry.taskRaw) ?? .writeGuided }
+
+    private var checkSummary: String {
+        guard let feedback = entry.feedbackJSON.flatMap({ try? JSONDecoder().decode(CorrectionService.Result.self, from: $0) }) else {
+            return "Not checked"
+        }
+        switch feedback.corrections.count {
+        case 0: return "No mistakes found"
+        case 1: return "1 correction"
+        case let count: return "\(count) corrections"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: TaskCopy.symbol(for: kind))
+                    .foregroundStyle(kind.color)
+                Text(TaskCopy.title(for: kind))
+                    .font(.rounded(.subheadline, weight: .heavy))
+                    .foregroundStyle(Palette.ink)
+                Spacer(minLength: 8)
+                Text(entry.date.formatted(.dateTime.day().month(.abbreviated).year()))
+                    .font(.rounded(.caption, weight: .semibold))
+                    .foregroundStyle(Palette.secondaryText)
+            }
+            Text(entry.text)
+                .font(.rounded(.subheadline, weight: .medium))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(2)
+            Text("\(checkSummary) · \(WritingHistoryRow.describe(standing))")
+                .font(.rounded(.caption, weight: .semibold))
+                .foregroundStyle(Palette.secondaryText)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -149,8 +205,10 @@ struct WritingHistoryRow: View {
         .sensoryFeedback(.success, trigger: copied == id)
     }
 
+    private var standingText: String { Self.describe(standing) }
+
     /// "42.5 training hours · A2.1 Explorer"; "≈" when it was worked out afterwards.
-    private var standingText: String {
+    static func describe(_ standing: (hours: Double, band: Band, estimated: Bool)) -> String {
         let hours = standing.hours < 100 ? String(format: "%.1f", standing.hours) : "\(Int(standing.hours.rounded()))"
         let level = "\(standing.band.rawValue) \(ActiveLanguage.levelName(standing.band))"
         return "\(standing.estimated ? "≈ " : "")\(hours) training hours · \(standing.estimated ? "≈ " : "")\(level)"

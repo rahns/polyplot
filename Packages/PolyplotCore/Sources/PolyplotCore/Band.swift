@@ -20,6 +20,13 @@ public enum Band: String, CaseIterable, Codable, Sendable, Comparable {
         hours / listeningShare
     }
 
+    /// Settings → Level & training hours: the listening before Polyplot that gives `target` training hours in all,
+    /// on top of `loggedHours` logged in Polyplot. Logged practice can't be taken away, so a target below it
+    /// gives no listening before Polyplot (total = the logged hours).
+    public static func listeningBaseline(forTrainingHours target: Double, loggedHours: Double) -> Double {
+        max(0, target - loggedHours) * listeningShare
+    }
+
     /// Share of weekly minutes per strand (R1). Each row sums to 1; listening is 55% throughout, except at A1.1,
     /// where a complete beginner studies more than they listen (45%).
     public var strandTargets: [Strand: Double] {

@@ -184,6 +184,29 @@ final class AppModel {
         return Band.trainingHours(fromListening: profile?.baselineInputHours ?? 0) + Double(minutes) / 60
     }
 
+    /// Hours logged in Polyplot, the part of training hours a manual change can't take away.
+    var loggedHours: Double { Double(logs.reduce(0) { $0 + $1.minutes }) / 60 }
+
+    /// Settings → Level & training hours: sets the level and the training hours by hand. The hours change the
+    /// listening before Polyplot (logged practice stays); the weekly goal stays and the target date follows.
+    /// A new level clears a failed level-up check's wait. Today's plan is remade if it hasn't started.
+    func changeStanding(band: Band, trainingHours target: Double) {
+        guard let profile else { return }
+        profile.baselineInputHours = Band.listeningBaseline(forTrainingHours: target, loggedHours: loggedHours)
+        if band != profile.band {
+            profile.band = band
+            profile.lastFailedGate = nil
+            ActiveLanguage.setBand(band)
+        }
+        profile.targetDate = GoalPace.arrival(atHours: profile.goalHours, currentHours: trainingHours,
+                                              weeklyMinutes: profile.weeklyGoalMinutes, from: .now)
+        save()
+        updateSpeakingStage()
+        replanTodayIfNotStarted()
+        refreshReminders()
+        publishWidgets()
+    }
+
     /// Listening hours only (before Polyplot plus logged listening): for speaking-stage unlocks and the Dreaming Spanish row.
     var listeningHours: Double {
         let minutes = logs.filter { $0.task.countsAsInput }.reduce(0) { $0 + $1.minutes }

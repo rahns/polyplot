@@ -33,7 +33,7 @@ struct CustomSourcesView: View {
                             model.setCustomSources(updated)
                         }
                     } footer: {
-                        Text("Tap one to edit it, swipe left to delete it. Polyplot shares each part of the plan between your own sources and the built-in ones, taking turns over the week.")
+                        Text("These sources are included in your plans.")
                     }
                 }
             }
