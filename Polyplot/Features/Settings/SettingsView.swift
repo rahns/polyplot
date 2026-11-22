@@ -162,28 +162,6 @@ struct SettingsView: View {
             }
         }
         Section {
-            NavigationLink {
-                GeminiSettingsView { _ in checkers = SettingsView.checkersText() }
-            } label: {
-                LabeledContent("Writing feedback", value: checkers)
-            }
-            Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
-                subtitled("Keep writing history", "Writing snippets can still appear in the mistake deck when this is off")
-            }
-            // The page is always there, so what's already kept can be read, copied or cleared with the toggle off.
-            NavigationLink {
-                WritingHistoryView()
-            } label: {
-                let count = model.writingHistory.count
-                LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
-            }
-        } header: {
-            Text("Writing")
-        } footer: {
-            Text("Poly checks writing with your own free Gemini or GroqCloud key, shared by all your languages"
-                 + (profile.pack.isCustom ? ". \(profile.pack.name) needs one: the basic checker doesn't know it." : "; without one, a basic checker is used."))
-        }
-        Section {
             Toggle("Daily reminder", isOn: binding(
                 get: { profile.reminderEnabled },
                 set: { on in
@@ -223,6 +201,28 @@ struct SettingsView: View {
             Text("Reminders & week")
         } footer: {
             Text("Your weekly goal resets on the day your week starts.")
+        }
+        Section {
+            NavigationLink {
+                GeminiSettingsView { _ in checkers = SettingsView.checkersText() }
+            } label: {
+                LabeledContent("Writing feedback", value: checkers)
+            }
+            Toggle(isOn: Binding(get: { profile.keepsWritingHistory }, set: { model.setKeepsWritingHistory($0) })) {
+                subtitled("Keep writing history", "Writing snippets can still appear in the mistake deck when this is off")
+            }
+            // The page is always there, so what's already kept can be read, copied or cleared with the toggle off.
+            NavigationLink {
+                WritingHistoryView()
+            } label: {
+                let count = model.writingHistory.count
+                LabeledContent("Writing history", value: count == 0 ? "None yet" : "\(count)")
+            }
+        } header: {
+            Text("Writing")
+        } footer: {
+            Text("Poly checks writing with your own free Gemini or GroqCloud key, shared by all your languages"
+                 + (profile.pack.isCustom ? ". \(profile.pack.name) needs one: the basic checker doesn't know it." : "; without one, a basic checker is used."))
         }
         Section {
             // With another language set up, starting over deletes this one and switches back to that one.
