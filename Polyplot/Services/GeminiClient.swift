@@ -267,7 +267,7 @@ enum GeminiClient {
         case Gemini.Failure.invalidKey:
             "Gemini didn't accept your API key, so the basic checker did this one. Check the key in Settings → Writing feedback."
         case Gemini.Failure.busy, Gemini.Failure.timedOut:
-            "Gemini is busy right now (high demand), so the basic checker did this one. Try checking again in a minute."
+            "Gemini is busy right now, so the basic checker did this one. Try checking again in a minute."
         case Gemini.Failure.modelUnavailable:
             "\(Gemini.displayName) isn't available to your key right now, so the basic checker did this one."
         case let urlError as URLError where urlError.code == .notConnectedToInternet:

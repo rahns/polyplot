@@ -149,7 +149,7 @@ struct GeminiSettingsView: View {
         if !groqKey.isEmpty { available.insert(.groq) }
         let order = WritingChecker.order(default: defaultChecker, available: available)
         switch order.count {
-        case 0: return "No keys yet: the basic checker (LanguageTool and the on-device model) checks your writing. It misses more."
+        case 0: return "No keys yet: the basic checker checks your writing. It misses more."
         case 1 where order[0] != defaultChecker:
             return "\(defaultChecker.name) has no key yet, so \(order[0].name) checks your writing, then the basic checker if it can't."
         case 1: return "\(order[0].name) checks your writing. Add a \(order[0] == .gemini ? "Groq" : "Gemini") key too, and it's tried when \(order[0].name) can't answer."
@@ -198,7 +198,7 @@ struct GeminiSettingsView: View {
                     Button("Remove Gemini key", role: .destructive) { key = "" }
                         .buttonStyle(ChunkySecondaryButtonStyle())
                 }
-                section("GroqCloud", "Groq with a Q, at console.groq.com: a company that runs open AI models fast. Not Grok, the chatbot on X. Also free, and usually less busy than Google. Polyplot picks the best model GroqCloud offers (GPT-OSS 120B for now) and switches by itself if GroqCloud changes its models.")
+                section("GroqCloud", "Groq with a Q, at console.groq.com: a company that runs open AI models fast. Not Grok, the chatbot on X. Also free, and usually less busy than Google.")
                 GeminiKeySetup(key: $groqKey, groq: true)
                 if !groqKey.isEmpty {
                     Button("Remove GroqCloud key", role: .destructive) { groqKey = "" }

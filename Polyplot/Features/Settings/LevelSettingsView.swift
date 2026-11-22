@@ -101,7 +101,7 @@ struct LevelSettingsView: View {
             Text("New training hours")
         } footer: {
             let pointsTo = pack.levels.band(forHours: Double(hours))
-            Text("Every minute of practice counts, plus listening from before Polyplot. Your \(minimum) h logged here can't be taken away, so it's the lowest it can go. \(hours) h is where \(pointsTo.rawValue) usually is"
+            Text("It can't go below the \(minimum) h you've practised in Polyplot. \(hours) h is about where \(pointsTo.rawValue) usually is"
                  + (pointsTo == band ? "." : "; you've picked \(band.rawValue)."))
         }
         Section {

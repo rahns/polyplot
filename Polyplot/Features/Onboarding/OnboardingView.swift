@@ -932,7 +932,7 @@ struct OnboardingView: View {
             return "Starting from zero: the easiest videos, the first course tracks and short daily lessons. The level-up check comes once you've put in the hours."
         }
         let yes = draft.canDoAnswers.values.filter { $0 }.count
-        let base = "\(Int(draft.inputHours)) hours of listening (≈ \(Int(draft.trainingHours)) training hours, since listening is \(Int(Band.listeningShare * 100))% of Polyplot's mix) and \(yes) of \(draft.canDoStatements.count) can-dos"
+        let base = "\(Int(draft.inputHours)) hours of listening and \(yes) of \(draft.canDoStatements.count) can-dos"
         switch result.adjustment {
         case 1: return "\(base). You're ahead of your hours, so you start one level up."
         default: return "\(base)."

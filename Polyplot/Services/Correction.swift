@@ -74,7 +74,7 @@ enum CorrectionService {
         guard modelAvailable else {
             guard let matches else { throw Failure.nothingAvailable(notice: notice) }
             return Result(corrections: Mistakes.merge(model: [], languageTool: toolCorrections), naturalRewrite: "", strengths: [],
-                          engine: matches.isEmpty ? "LanguageTool (found nothing)" : "LanguageTool")
+                          engine: "the basic checker")
         }
 
         let session = LanguageModelSession(instructions: instructions(for: band))
@@ -90,7 +90,7 @@ enum CorrectionService {
             corrections: Mistakes.merge(model: modelCorrections, languageTool: toolCorrections),
             naturalRewrite: feedback.naturalRewrite,
             strengths: Array(feedback.strengths.prefix(2)),
-            engine: matches == nil ? "On-device model (offline)" : "LanguageTool + on-device model"
+            engine: "the basic checker"
         )
     }
 

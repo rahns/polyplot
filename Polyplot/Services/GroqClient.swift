@@ -46,7 +46,8 @@ enum GroqClient {
             corrections: Mistakes.merge(model: feedback.corrections, languageTool: []),
             naturalRewrite: feedback.naturalRewrite,
             strengths: Array(feedback.strengths.prefix(2)),
-            engine: Groq.displayName(for: reply.model)
+            // The model is for Diagnostics; the learner just sees "Checked by GroqCloud".
+            engine: "GroqCloud"
         )
     }
 
@@ -54,7 +55,7 @@ enum GroqClient {
     static func test(key: String) async -> (works: Bool, message: String) {
         do {
             let reply = try await send(input: "Escribe: «Ayer fui a la playa.»", instructions: "Reply with the JSON asked for.", key: key)
-            return (true, "It works (using \(reply.model)). Poly will use GroqCloud to check your writing.")
+            return (true, "It works. Poly will use GroqCloud to check your writing.")
         } catch Gemini.Failure.rateLimited {
             return (true, "Your key works, but its free limit is used up for now. It resets soon.")
         } catch Gemini.Failure.busy {

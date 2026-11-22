@@ -51,7 +51,7 @@ struct StatsView: View {
                 Text("\(Int(hours)) training hours")
                     .font(.rounded(.title3, weight: .black))
                     .foregroundStyle(Palette.ink)
-                Text("Every minute of practice counts. Listening from before Polyplot counts at the plan's mix (\(Int(profile.baselineInputHours)) h → \(Int(Band.trainingHours(fromListening: profile.baselineInputHours))) h).")
+                Text("Every minute of practice counts, plus your listening from before you started.")
                     .font(.rounded(.caption, weight: .semibold))
                     .foregroundStyle(Palette.secondaryText)
                 ChunkyProgressBar(value: progress, color: Palette.coral)

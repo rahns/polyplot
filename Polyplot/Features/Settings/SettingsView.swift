@@ -280,7 +280,7 @@ struct SettingsView: View {
         Section {
             ShareLink(item: URL(string: "https://github.com/rahns/polyplot/releases/latest")!,
                       subject: Text("Polyplot"),
-                      message: Text("I'm using Polyplot to plan my \(profile.pack.name). Download it here (you sign it with your own certificate):")) {
+                      message: Text("I'm using Polyplot to plan my \(profile.pack.name). Download it here:")) {
                 Label("Share Polyplot with a friend", systemImage: "square.and.arrow.up")
             }
             Link(destination: Self.feedbackEmail) {
