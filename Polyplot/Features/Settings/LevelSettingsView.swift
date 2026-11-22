@@ -76,7 +76,7 @@ struct LevelSettingsView: View {
         } header: {
             Text("Now")
         } footer: {
-            Text("\(Int(logged.rounded())) h logged in Polyplot, plus \(Int(Band.trainingHours(fromListening: profile.baselineInputHours).rounded())) h from before (\(Int(profile.baselineInputHours.rounded())) h of listening).")
+            Text("\(Int(logged.rounded())) h practised in Polyplot, plus \(Int(Band.trainingHours(fromListening: profile.baselineInputHours).rounded())) h from before you started using it.")
         }
         Section {
             Label("Changing these reshapes every plan from now on. Save a backup first, so you can put everything back if it doesn't feel right.", systemImage: "exclamationmark.shield.fill")
@@ -163,7 +163,7 @@ private struct LevelChangeReview: View {
                             }
                         }
                         if hoursChange {
-                            point("clock", "Your \(Int(model.loggedHours.rounded())) h of logged practice stay. Only the hours from before Polyplot change, so Progress, projections and your goal date use the new total. Your weekly goal stays at \(profile.weeklyGoalMinutes) min.")
+                            point("clock", "Everything you've practised in Polyplot stays. Your progress and goal date will use the new total, and your weekly goal stays at \(profile.weeklyGoalMinutes) min a week.")
                             if hours > hoursNow {
                                 point("waveform", "More listening hours can unlock voice notes and calls sooner.")
                             } else {
