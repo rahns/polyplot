@@ -1,6 +1,6 @@
 # Polyplot
 
-Native iOS app (SwiftUI, iOS 27+) that turns a language learner's sources into one research-based daily plan. It teaches Spanish and French; the app's own text is English. The spec lives in `docs/` and is the source of truth; update it when behavior changes.
+Native iOS app (SwiftUI, iOS 27+) that turns a language learner's sources into one research-based daily plan. It teaches Spanish and French; the app's own text is English. The spec lives in `docs/` and is the source of truth; update it when behavior changes. It's internal documentation for developers and AI agents (the app is going closed source), not for users: write it for that audience, precise and complete rather than polished.
 
 ## Layout
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated and not committed.
